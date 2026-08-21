@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<header>
+    <h1>Editar Producto: {{ producto.nombre }}</h1>
+    <p><a href="{{ url_for('productos') }}" style="color: #0284c7; text-decoration: none;">← Volver a Productos</a></p>
+</header>
+
+<div class="card-form">
+    <form action="{{ url_for('editar_producto', producto_id=producto.id) }}" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Nombre:</label>
+                <input type="text" name="nombre" value="{{ producto.nombre }}" required>
+            </div>
+            <div class="form-group">
+                <label>Marca:</label>
+                <input type="text" name="marca" value="{{ producto.marca }}" required>
+            </div>
+            <div class="form-group">
+                <label>Sabor:</label>
+                <input type="text" name="sabor" value="{{ producto.sabor }}" required>
+            </div>
+            <div class="form-group">
+                <label>Barritas por caja (Info):</label>
+                <input type="number" name="contenido_caja" value="{{ producto.contenido_caja }}" required>
+            </div>
+            <div class="form-group">
+                <label>Stock Actual (Cajas):</label>
+                <input type="number" name="stock_cajas" value="{{ producto.stock_cajas }}" min="0" required>
+            </div>
+            <div class="form-group">
+                <label>Stock Mínimo (Cajas):</label>
+                <input type="number" name="stock_minimo" value="{{ producto.stock_minimo }}" min="0" required>
+            </div>
+            <div class="form-group">
+                <label>Costo de compra por caja ($):</label>
+                <input type="number" step="0.01" name="costo_caja" value="{{ producto.costo_caja }}" required>
+            </div>
+        </div>
+
+        <h4>Precios de Venta por Caja</h4>
+        <div class="form-grid">
+            {% for tipo in tipos_cliente %}
+            <div class="form-group">
+                <label>Precio {{ tipo.nombre }} ($):</label>
+                <input type="number" step="0.01" name="precio_tipo_{{ tipo.id }}" value="{{ precios_map.get(tipo.id, 0.0) }}" required>
+            </div>
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="btn" style="background-color: #16a34a;">Guardar Cambios</button>
+    </form>
+</div>
+{% endblock %}

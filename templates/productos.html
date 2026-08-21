@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<header>
+    <h1>Gestión de Productos</h1>
+</header>
+
+<div class="card-form">
+    <h3>Nuevo Producto</h3>
+    <form action="{{ url_for('productos') }}" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Nombre:</label>
+                <input type="text" name="nombre" placeholder="Ej: Protein Chocolate" required>
+            </div>
+            <div class="form-group">
+                <label>Marca:</label>
+                <input type="text" name="marca" placeholder="Ej: Ena" required>
+            </div>
+            <div class="form-group">
+                <label>Sabor:</label>
+                <input type="text" name="sabor" placeholder="Ej: Chocolate" required>
+            </div>
+            <div class="form-group">
+                <label>Barritas por caja (Info):</label>
+                <input type="number" name="contenido_caja" value="12" required>
+            </div>
+            <div class="form-group">
+                <label>Stock Inicial (Cajas):</label>
+                <input type="number" name="stock_cajas" value="0" min="0" required>
+            </div>
+            <div class="form-group">
+                <label>Stock Mínimo (Cajas):</label>
+                <input type="number" name="stock_minimo" value="0" min="0" required>
+            </div>
+            <div class="form-group">
+                <label>Costo de compra por caja ($):</label>
+                <input type="number" step="0.01" name="costo_caja" placeholder="7000" required>
+            </div>
+        </div>
+
+        <h4>Precios de Venta por Caja según Tipo de Cliente</h4>
+        <div class="form-grid">
+            {% for tipo in tipos_cliente %}
+            <div class="form-group">
+                <label>Precio {{ tipo.nombre }} ($):</label>
+                <input type="number" step="0.01" name="precio_tipo_{{ tipo.id }}" placeholder="0.00" required>
+            </div>
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="btn">Guardar Producto</button>
+    </form>
+</div>
+
+<hr style="margin: 30px 0;">
+
+<h3>Listado de Productos</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Producto</th>
+            <th>Marca / Sabor</th>
+            <th>Stock Actual</th>
+            <th>Costo / Caja</th>
+            <th>Precios por Tipo</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for prod in productos %}
+        <tr>
+            <td>{{ prod.id }}</td>
+            <td><strong>{{ prod.nombre }}</strong></td>
+            <td>{{ prod.marca }} - {{ prod.sabor }}</td>
+            <td><strong>{{ prod.stock_cajas }} cajas</strong></td>
+            <td>${{ "{:,.2f}".format(prod.costo_caja) }}</td>
+            <td>
+                {% for p in prod.precios %}
+                    <small><strong>{{ p.tipo_rel.nombre }}:</strong> ${{ "{:,.2f}".format(p.precio_caja) }}</small><br>
+                {% endfor %}
+            </td>
+            <td>
+                <a href="{{ url_for('editar_producto', producto_id=prod.id) }}" class="btn" style="padding: 4px 8px; font-size: 0.8rem; background-color: #475569; text-decoration: none;">✏️ Editar</a>
+            </td>
+            <td>
+                <form action="{{ url_for('eliminar_producto', producto_id=prod.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Seguro que deseas eliminar este producto?');">
+                    <button type="submit" class="btn" style="background-color: #dc2626; padding: 4px 8px; font-size: 0.8rem;">🗑️ Eliminar</button>
+                </form>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="7">No hay productos registrados aún.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

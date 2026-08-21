@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Barritas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <h2>BarritasApp</h2>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('index') }}">Dashboard</a></li>
+                    <li><a href="{{ url_for('productos') }}">Productos</a></li>
+                    <li><a href="{{ url_for('stock') }}">Stock</a></li>
+                    <li><a href="{{ url_for('compras') }}">Compras</a></li>
+                    <li><a href="{{ url_for('clientes') }}">Clientes</a></li>
+                    <li><a href="{{ url_for('ventas') }}">Ventas</a></li>
+                    <li><a href="{{ url_for('balance') }}">Balance</a></li>
+                    <li><a href="{{ url_for('historial') }}">Historial</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <main class="content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

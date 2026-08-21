@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<header>
+    <h1>Historial Unificado de Movimientos</h1>
+</header>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Fecha</th>
+            <th>Tipo de Movimiento</th>
+            <th>Producto</th>
+            <th>Cajas</th>
+            <th>Detalle</th>
+            <th>Monto</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for m in movimientos %}
+        <tr>
+            <td>{{ m.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td>
+                {% if 'COMPRA' in m.tipo %}
+                    <span class="badge warning">{{ m.tipo }}</span>
+                {% else %}
+                    <span class="badge success">{{ m.tipo }}</span>
+                {% endif %}
+            </td>
+            <td>{{ m.producto }}</td>
+            <td><strong>{{ m.cajas }}</strong></td>
+            <td>{{ m.detalle }}</td>
+            <td><strong>{{ m.monto }}</strong></td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="6">No existen movimientos registrados.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

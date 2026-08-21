@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<header>
+    <h1>Dashboard Principal</h1>
+</header>
+
+<div class="form-grid" style="margin-bottom: 25px;">
+    <div class="card-form">
+        <small style="color: #64748b;">Stock Disponible</small>
+        <h2>{{ total_cajas_stock }} cajas</h2>
+    </div>
+    <div class="card-form">
+        <small style="color: #64748b;">Ventas Totales</small>
+        <h2>${{ "{:,.2f}".format(total_ventas_dinero) }}</h2>
+    </div>
+    <div class="card-form">
+        <small style="color: #64748b;">Costos Totales</small>
+        <h2>${{ "{:,.2f}".format(total_costos) }}</h2>
+    </div>
+    <div class="card-form">
+        <small style="color: #64748b;">Ganancia Neta</small>
+        <h2 style="color: #16a34a;">${{ "{:,.2f}".format(total_ganancias) }}</h2>
+    </div>
+    <div class="card-form">
+        <small style="color: #64748b;">Clientes Registrados</small>
+        <h2>{{ cant_clientes }}</h2>
+    </div>
+    <div class="card-form">
+        <small style="color: #64748b;">Cajas Vendidas</small>
+        <h2>{{ total_cajas_vendidas }} cajas</h2>
+    </div>
+</div>
+
+<h3>Alertas de Stock</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th>Stock Actual</th>
+            <th>Stock Mínimo</th>
+            <th>Estado</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for prod in alertas_stock %}
+        <tr>
+            <td><strong>{{ prod.nombre }}</strong> ({{ prod.sabor }})</td>
+            <td>{{ prod.stock_cajas }} cajas</td>
+            <td>{{ prod.stock_minimo }} cajas</td>
+            <td>
+                {% if prod.stock_cajas <= 0 %}
+                    <span class="badge danger">🔴 AGOTADO</span>
+                {% else %}
+                    <span class="badge warning">⚠️ STOCK BAJO</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="4">No hay alertas de stock en este momento. Todos los productos tienen buen stock.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

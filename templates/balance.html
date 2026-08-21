@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<header>
+    <h1>Balance Financiero</h1>
+</header>
+
+<div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
+    <strong>Filtrar Período:</strong>
+    <a href="{{ url_for('balance', filtro='hoy') }}" class="btn" style="padding: 6px 12px; font-size: 0.85rem;">Hoy</a>
+    <a href="{{ url_for('balance', filtro='semana') }}" class="btn" style="padding: 6px 12px; font-size: 0.85rem;">Esta Semana</a>
+    <a href="{{ url_for('balance', filtro='mes') }}" class="btn" style="padding: 6px 12px; font-size: 0.85rem;">Este Mes</a>
+    <a href="{{ url_for('balance', filtro='anio') }}" class="btn" style="padding: 6px 12px; font-size: 0.85rem;">Este Año</a>
+</div>
+
+<div class="form-grid" style="margin-bottom: 25px;">
+    <div class="card-form">
+        <small style="color: #64748b; font-weight: bold;">INGRESOS (VENTAS)</small>
+        <h2 style="color: #0284c7; margin-top: 5px;">${{ "{:,.2f}".format(ingresos) }}</h2>
+    </div>
+    <div class="card-form">
+        <small style="color: #64748b; font-weight: bold;">COSTOS (MERCADERÍA)</small>
+        <h2 style="color: #dc2626; margin-top: 5px;">${{ "{:,.2f}".format(costos) }}</h2>
+    </div>
+    <div class="card-form">
+        <small style="color: #64748b; font-weight: bold;">GANANCIA NETA</small>
+        <h2 style="color: #16a34a; margin-top: 5px;">${{ "{:,.2f}".format(ganancia) }}</h2>
+    </div>
+</div>
+
+<h3>Ventas del Período ({{ filtro_actual|upper }})</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Producto</th>
+            <th>Cajas</th>
+            <th>Total Venta</th>
+            <th>Ganancia</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for v in ventas %}
+        <tr>
+            <td>{{ v.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td>{{ v.cliente.nombre }}</td>
+            <td>{{ v.producto.nombre }} ({{ v.producto.sabor }})</td>
+            <td>{{ v.cantidad_cajas }} cjs</td>
+            <td>${{ "{:,.2f}".format(v.total) }}</td>
+            <td><strong style="color: #16a34a;">+${{ "{:,.2f}".format(v.ganancia) }}</strong></td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="6">No hay registros de ventas para este período.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
