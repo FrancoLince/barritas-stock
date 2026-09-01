@@ -47,11 +47,11 @@
     <thead>
         <tr>
             <th>Fecha</th>
-            <th>Producto</th>
-            <th>Cajas Compradas</th>
-            <th>Costo / Caja</th>
-            <th>Costo Total</th>
-            <th>Proveedor</th>
+            <th>Proveedor / Producto</th>
+            <th>Cajas</th>
+            <th>Costo/Caja</th>
+            <th>Total Compra</th>
+            <th>Observaciones</th>
             <th>Acciones</th>
         </tr>
     </thead>
@@ -59,22 +59,20 @@
         {% for c in compras %}
         <tr>
             <td>{{ c.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
-            <td>{{ c.producto.nombre }} ({{ c.producto.sabor }})</td>
-            <td>+{{ c.cantidad_cajas }} cajas</td>
+            <td><strong>{{ c.producto.nombre }}</strong> ({{ c.producto.sabor }})</td>
+            <td>{{ c.cantidad_cajas }} cajas</td>
             <td>${{ "{:,.2f}".format(c.costo_por_caja) }}</td>
-            <td><strong>${{ "{:,.2f}".format(c.costo_total) }}</strong></td>
-            <td>{{ c.proveedor or '-' }}</td>
+            <td><strong>${{ "{:,.2f}".format(c.total) }}</strong></td>
+            <td>{{ c.observaciones or '-' }}</td>
             <td>
-                <form action="{{ url_for('eliminar_compra', compra_id=c.id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar esta compra? Se descontarán {{ c.cantidad_cajas }} cajas del stock.');" style="display:inline;">
-                    <button type="submit" class="btn btn-sm btn-outline-danger" style="color: red; cursor: pointer;">
-                        Eliminar
-                    </button>
+                <form action="{{ url_for('eliminar_compra', compra_id=c.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Anular esta compra? Se descontará el stock agregando al producto.');">
+                    <button type="submit" class="btn" style="background-color: #dc2626; padding: 4px 8px; font-size: 0.8rem;">🗑️ Anular</button>
                 </form>
             </td>
         </tr>
         {% else %}
         <tr>
-            <td colspan="7">No hay registros de compras.</td>
+            <td colspan="7">No se han registrado compras aún.</td>
         </tr>
         {% endfor %}
     </tbody>
