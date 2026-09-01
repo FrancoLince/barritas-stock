@@ -68,7 +68,8 @@ def login():
         user = User.query.filter_by(username=username).first()
         
         if user and user.check_password(password):
-            login_user(user)
+            # Si pasás remember=False, la sesión se destruye al cerrar el navegador
+            login_user(user, remember=False) 
             return redirect(url_for("index"))
         else:
             flash("Usuario o contraseña incorrectos", "error")
