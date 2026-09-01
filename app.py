@@ -30,7 +30,7 @@ with app.app_context():
     # Usuario administrador por defecto
     if not User.query.filter_by(username="admin").first():
         admin = User(username="admin")
-        admin.set_password("TuContraseñaSuperSegura123")  # Cambiá esta clave
+        admin.set_password("Barritas123")  # Cambiá esta clave
         db.session.add(admin)
         
     db.session.commit()
