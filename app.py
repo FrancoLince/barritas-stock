@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -17,7 +17,8 @@ login_manager.login_message = "Por favor, inicia sesión para acceder."
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
+
 
 # --- INICIALIZACIÓN DE DATOS (SEED) ---
 with app.app_context():
@@ -27,11 +28,19 @@ with app.app_context():
         if not TipoCliente.query.filter_by(nombre=nombre).first():
             db.session.add(TipoCliente(nombre=nombre))
     
-    # Usuario administrador por defecto
-    if not User.query.filter_by(username="admin").first():
-        admin = User(username="admin")
-        admin.set_password("Barritas123")  # Cambiá esta clave
-        db.session.add(admin)
+    # Lista de usuarios a crear por defecto (Usuario, Contraseña)
+    usuarios_iniciales = [
+        ("admin", "AdminPassword123!"),
+        ("vendedor1", "VentaPass2026!"),
+        ("vendedor2", "VentaPass2026!"),
+        ("deposito", "StockPass2026!")
+    ]
+
+    for username, password in usuarios_iniciales:
+        if not User.query.filter_by(username=username).first():
+            nuevo_usuario = User(username=username)
+            nuevo_usuario.set_password(password)
+            db.session.add(nuevo_usuario)
         
     db.session.commit()
 
@@ -147,7 +156,7 @@ def productos():
 @login_required
 def ajustar_stock(producto_id):
     nuevo_stock = int(request.form.get('nuevo_stock', 0))
-    prod = Producto.query.get_or_404(producto_id)
+    prod = db.session.get(Producto, producto_id) or db.first_or_404(Producto, producto_id)
     if nuevo_stock >= 0:
         prod.stock_cajas = nuevo_stock
         db.session.commit()
@@ -157,7 +166,7 @@ def ajustar_stock(producto_id):
 @app.route('/productos/<int:producto_id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar_producto(producto_id):
-    prod = Producto.query.get_or_404(producto_id)
+    prod = db.session.get(Producto, producto_id) or db.first_or_404(Producto, producto_id)
     tipos = TipoCliente.query.all()
 
     if request.method == 'POST':
@@ -238,7 +247,7 @@ def compras():
             observaciones=observaciones
         )
         
-        prod = Producto.query.get(producto_id)
+        prod = db.session.get(Producto, producto_id)
         if prod:
             prod.stock_cajas += cantidad_cajas
             prod.costo_caja = costo_por_caja
@@ -296,8 +305,8 @@ def obtener_precio_api():
     if not cliente_id or not producto_id:
         return jsonify({'precio_sugerido': 0.0, 'stock_disponible': 0})
 
-    cliente = Cliente.query.get(cliente_id)
-    producto = Producto.query.get(producto_id)
+    cliente = db.session.get(Cliente, cliente_id)
+    producto = db.session.get(Producto, producto_id)
 
     if not cliente or not producto:
         return jsonify({'precio_sugerido': 0.0, 'stock_disponible': 0})
@@ -326,7 +335,7 @@ def ventas():
         precio_por_caja = float(request.form.get('precio_por_caja'))
         observaciones = request.form.get('observaciones')
 
-        producto = Producto.query.get_or_404(producto_id)
+        producto = db.session.get(Producto, producto_id) or db.first_or_404(Producto, producto_id)
 
         if cantidad_cajas > producto.stock_cajas:
             return f"Error: No hay stock suficiente. Stock disponible: {producto.stock_cajas} cajas.", 400
@@ -343,7 +352,7 @@ def ventas():
             total=total_venta,
             costo_total=costo_total_venta,
             ganancia=ganancia_venta,
-            observaciones=observaciones
+            observaciones=f"Registrado por: {current_user.username}. " + (observaciones or "")
         )
 
         producto.stock_cajas -= cantidad_cajas
@@ -368,7 +377,7 @@ def ventas():
 @login_required
 def balance():
     filtro = request.args.get('filtro', 'mes')
-    hoy = datetime.utcnow().date()
+    hoy = datetime.now(timezone.utc).date()
 
     query = Venta.query
 
@@ -438,7 +447,7 @@ def historial():
 @app.route('/productos/<int:producto_id>/eliminar', methods=['POST'])
 @login_required
 def eliminar_producto(producto_id):
-    prod = Producto.query.get_or_404(producto_id)
+    prod = db.session.get(Producto, producto_id) or db.first_or_404(Producto, producto_id)
     PrecioProducto.query.filter_by(producto_id=prod.id).delete()
     db.session.delete(prod)
     db.session.commit()
@@ -448,7 +457,7 @@ def eliminar_producto(producto_id):
 @app.route('/clientes/<int:cliente_id>/eliminar', methods=['POST'])
 @login_required
 def eliminar_cliente(cliente_id):
-    cliente = Cliente.query.get_or_404(cliente_id)
+    cliente = db.session.get(Cliente, cliente_id) or db.first_or_404(Cliente, cliente_id)
     db.session.delete(cliente)
     db.session.commit()
     return redirect(url_for('clientes'))
@@ -457,8 +466,8 @@ def eliminar_cliente(cliente_id):
 @app.route('/ventas/<int:venta_id>/eliminar', methods=['POST'])
 @login_required
 def eliminar_venta(venta_id):
-    venta = Venta.query.get_or_404(venta_id)
-    producto = Producto.query.get(venta.producto_id)
+    venta = db.session.get(Venta, venta_id) or db.first_or_404(Venta, venta_id)
+    producto = db.session.get(Producto, venta.producto_id)
     if producto:
         producto.stock_cajas += venta.cantidad_cajas
 
@@ -470,8 +479,8 @@ def eliminar_venta(venta_id):
 @app.route('/compras/<int:compra_id>/eliminar', methods=['POST'])
 @login_required
 def eliminar_compra(compra_id):
-    compra = Compra.query.get_or_404(compra_id)
-    producto = Producto.query.get(compra.producto_id)
+    compra = db.session.get(Compra, compra_id) or db.first_or_404(Compra, compra_id)
+    producto = db.session.get(Producto, compra.producto_id)
     if producto:
         producto.stock_cajas = max(0, producto.stock_cajas - compra.cantidad_cajas)
 
