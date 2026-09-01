@@ -86,7 +86,7 @@
             <td><span class="badge success">+${{ "{:,.2f}".format(v.ganancia) }}</span></td>
             <td>
                 <form action="{{ url_for('eliminar_venta', venta_id=v.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Anular esta venta? Se devolverá el stock al producto.');">
-                    <button type="submit" class="btn" style="background-color: #dc2626; padding: 4px 8px; font-size: 0.8rem;">🗑️ Anular</button>
+                <button type="submit" class="btn" style="background-color: #dc2626; padding: 4px 8px; font-size: 0.8rem;">🗑️ Anular</button>
                 </form>
             </td>
         </tr>
