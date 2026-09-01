@@ -30,17 +30,22 @@ with app.app_context():
     
     # Lista de usuarios a crear por defecto (Usuario, Contraseña)
     usuarios_iniciales = [
-        ("admin", "admin"),
-        ("Emilia", "Barritas123"),
-        ("Analia", "Barritas123"),
-        ("Cati", "Barritas123")
+            ("admin", "admin"),
+            ("Emilia", "Barritas123"),
+            ("Analia", "Barritas123"),
+            ("Cati", "Barritas123")
     ]
 
     for username, password in usuarios_iniciales:
-        if not User.query.filter_by(username=username).first():
+        usuario = User.query.filter_by(username=username).first()
+        if not usuario:
+            # Si no existe, lo crea
             nuevo_usuario = User(username=username)
             nuevo_usuario.set_password(password)
             db.session.add(nuevo_usuario)
+        else:
+            # Si ya existe, le actualiza la contraseña
+            usuario.set_password(password)
         
     db.session.commit()
 
