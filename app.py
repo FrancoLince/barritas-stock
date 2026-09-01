@@ -30,10 +30,10 @@ with app.app_context():
     
     # Lista de usuarios a crear por defecto (Usuario, Contraseña)
     usuarios_iniciales = [
-        ("admin", "AdminPassword123!"),
-        ("vendedor1", "VentaPass2026!"),
-        ("vendedor2", "VentaPass2026!"),
-        ("deposito", "StockPass2026!")
+        ("admin", "admin"),
+        ("Emilia", "Barritas123"),
+        ("Analia", "Barritas123"),
+        ("Cati", "Barritas123")
     ]
 
     for username, password in usuarios_iniciales:
