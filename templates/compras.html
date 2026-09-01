@@ -52,6 +52,7 @@
             <th>Costo / Caja</th>
             <th>Costo Total</th>
             <th>Proveedor</th>
+            <th>Acciones</th>
         </tr>
     </thead>
     <tbody>
@@ -63,10 +64,17 @@
             <td>${{ "{:,.2f}".format(c.costo_por_caja) }}</td>
             <td><strong>${{ "{:,.2f}".format(c.costo_total) }}</strong></td>
             <td>{{ c.proveedor or '-' }}</td>
+            <td>
+                <form action="{{ url_for('eliminar_compra', compra_id=c.id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar esta compra? Se descontarán {{ c.cantidad_cajas }} cajas del stock.');" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" style="color: red; cursor: pointer;">
+                        Eliminar
+                    </button>
+                </form>
+            </td>
         </tr>
         {% else %}
         <tr>
-            <td colspan="6">No hay registros de compras.</td>
+            <td colspan="7">No hay registros de compras.</td>
         </tr>
         {% endfor %}
     </tbody>
