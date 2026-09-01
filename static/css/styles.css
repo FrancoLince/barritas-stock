@@ -155,3 +155,69 @@ header {
     font-weight: bold;
     color: #0f172a;
 }
+/* ==========================================
+   RESPONSIVE DESIGN (MÓVILES Y TABLETS)
+   ========================================== */
+
+/* Ajustes generales para contenedores */
+@media (max-width: 768px) {
+    /* Ajuste de márgenes y padding general */
+    body {
+        padding: 10px;
+    }
+
+    .container, .main-content {
+        padding: 10px;
+        width: 100%;
+    }
+
+    /* Grillas de formularios en una sola columna */
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr !important;
+        gap: 12px;
+    }
+
+    .form-group[style*="grid-column"] {
+        grid-column: span 1 !important;
+    }
+
+    /* Tablas con desplazamiento horizontal suave */
+    .table-responsive, table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Ajuste de botones para celular */
+    .btn {
+        width: 100%;
+        padding: 12px;
+        font-size: 1rem;
+        text-align: center;
+    }
+
+    /* Ajuste de tarjetas o cards */
+    .card-form, .card {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+}
+
+/* Ajustes para pantallas muy pequeñas (menos de 480px) */
+@media (max-width: 480px) {
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    h3 {
+        font-size: 1.2rem;
+    }
+
+    table th, table td {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+    }
+}
