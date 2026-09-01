@@ -475,10 +475,25 @@ def historial():
 @login_required
 def eliminar_producto(producto_id):
     prod = db.session.get(Producto, producto_id) or db.first_or_404(Producto, producto_id)
-    PrecioProducto.query.filter_by(producto_id=prod.id).delete()
     db.session.delete(prod)
     db.session.commit()
+    flash("Producto eliminado correctamente.", "info")
     return redirect(url_for('productos'))
+
+
+@app.route('/compras/<int:compra_id>/eliminar', methods=['POST'])
+@login_required
+def eliminar_compra(compra_id):
+    compra = db.session.get(Compra, compra_id) or db.first_or_404(Compra, compra_id)
+    producto = db.session.get(Producto, compra.producto_id)
+    
+    if producto:
+        producto.stock_cajas = max(0, producto.stock_cajas - compra.cantidad_cajas)
+
+    db.session.delete(compra)
+    db.session.commit()
+    flash("Compra eliminada y stock descontado correctamente.", "info")
+    return redirect(url_for('compras'))
 
 
 @app.route('/clientes/<int:cliente_id>/eliminar', methods=['POST'])
@@ -487,6 +502,7 @@ def eliminar_cliente(cliente_id):
     cliente = db.session.get(Cliente, cliente_id) or db.first_or_404(Cliente, cliente_id)
     db.session.delete(cliente)
     db.session.commit()
+    flash("Cliente eliminado correctamente.", "info")
     return redirect(url_for('clientes'))
 
 
@@ -500,24 +516,8 @@ def eliminar_venta(venta_id):
 
     db.session.delete(venta)
     db.session.commit()
+    flash("Venta eliminada y stock devuelto correctamente.", "info")
     return redirect(url_for('ventas'))
-
-
-@app.route('/compras/<int:compra_id>/eliminar', methods=['POST'])
-@login_required
-def eliminar_compra(compra_id):
-    compra = db.session.get(Compra, compra_id) or db.first_or_404(Compra, compra_id)
-    producto = db.session.get(Producto, compra.producto_id)
-    
-    # Resta del stock las cajas de la compra eliminada
-    if producto:
-        producto.stock_cajas = max(0, producto.stock_cajas - compra.cantidad_cajas)
-
-    db.session.delete(compra)
-    db.session.commit()
-    
-    flash("Compra eliminada y stock descontado correctamente.", "info")
-    return redirect(url_for('compras'))
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
