@@ -63,7 +63,7 @@
             <td><strong>{{ c.producto.nombre }}</strong> ({{ c.producto.sabor }})</td>
             <td>+{{ c.cantidad_cajas }} cajas</td>
             <td>${{ "{:,.2f}".format(c.costo_por_caja) }}</td>
-            <td><strong>${{ "{:,.2f}".format(c.total) }}</strong></td>
+            <td><strong>${{ "{:,.2f}".format(c.costo_total) }}</strong></td>
             <td>{{ c.proveedor or '-' }}</td>
             <td>{{ c.observaciones or '-' }}</td>
             <td>
