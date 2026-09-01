@@ -209,7 +209,7 @@ def editar_producto(producto_id):
 
 
 # ---------------------------------------------------------
-# CONTROL DE STOCK
+# CONTROL DE STOCK (Protegido contra nulos)
 # ---------------------------------------------------------
 
 @app.route('/stock')
@@ -222,11 +222,29 @@ def stock():
     for p in prods:
         matriz_precios[p.id] = {}
         for precio_obj in p.precios:
-            matriz_precios[p.id][precio_obj.tipo_rel.nombre] = precio_obj.precio_caja
+            # Validamos que la relación tipo_rel exista antes de consultar
+            if precio_obj.tipo_rel:
+                matriz_precios[p.id][precio_obj.tipo_rel.nombre] = precio_obj.precio_caja
 
     return render_template('stock.html', productos=prods, tipos_cliente=tipos, precios=matriz_precios)
 
 
+# ---------------------------------------------------------
+# RUTAS DE ELIMINACIÓN
+# ---------------------------------------------------------
+
+@app.route('/productos/<int:producto_id>/eliminar', methods=['POST'])
+@login_required
+def eliminar_producto(producto_id):
+    prod = db.session.get(Producto, producto_id) or db.first_or_404(Producto, producto_id)
+    
+    # Al tener la cascada configurada en el modelo, SQLAlchemy 
+    # se encarga automáticamente de limpiar los precios, ventas y compras asociadas.
+    db.session.delete(prod)
+    db.session.commit()
+    
+    flash("Producto eliminado correctamente.", "info")
+    return redirect(url_for('productos'))
 # ---------------------------------------------------------
 # INGRESO DE COMPRAS
 # ---------------------------------------------------------
