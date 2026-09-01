@@ -42,10 +42,10 @@ class Producto(db.Model):
     stock_minimo = db.Column(db.Integer, default=5, nullable=False)
     costo_caja = db.Column(db.Float, default=0.0, nullable=False)
 
-    # Relaciones
+    # Relaciones con borrado en cascada
     precios = db.relationship('PrecioProducto', backref='producto', cascade="all, delete-orphan", lazy=True)
-    compras = db.relationship('Compra', backref='producto', lazy=True)
-    ventas = db.relationship('Venta', backref='producto', lazy=True)
+    compras = db.relationship('Compra', backref='producto', cascade="all, delete-orphan", lazy=True)
+    ventas = db.relationship('Venta', backref='producto', cascade="all, delete-orphan", lazy=True)
 
     @property
     def estado_stock(self):
