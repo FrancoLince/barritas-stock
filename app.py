@@ -3,7 +3,7 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from database import db, init_db
-from models import TipoCliente, Producto, PrecioProducto, Compra, Cliente, Venta,User
+from models import TipoCliente, Producto, PrecioProducto, Compra, Cliente, Venta, User
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev_key_super_secreta")
@@ -15,23 +15,30 @@ login_manager.init_app(app)
 login_manager.login_view = "login"
 login_manager.login_message = "Por favor, inicia sesión para acceder."
 
-# Seed de Tipos de Cliente iniciales
-with app.app_context():
-    tipos_defecto = ['Mayorista', 'Revendedor', 'Minorista']
-    for nombre in tipos_defecto:
-        if not TipoCliente.query.filter_by(nombre=nombre).first():
-            db.session.add(TipoCliente(nombre=nombre))
-    db.session.commit()
-
-
-# ---------------------------------------------------------
-# DASHBOARD PRINCIPAL
-# ---------------------------------------------------------
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- RUTAS DE AUTENTICACIÓN ---
+# --- INICIALIZACIÓN DE DATOS (SEED) ---
+with app.app_context():
+    # Seed de Tipos de Cliente iniciales
+    tipos_defecto = ['Mayorista', 'Revendedor', 'Minorista']
+    for nombre in tipos_defecto:
+        if not TipoCliente.query.filter_by(nombre=nombre).first():
+            db.session.add(TipoCliente(nombre=nombre))
+    
+    # Usuario administrador por defecto
+    if not User.query.filter_by(username="admin").first():
+        admin = User(username="admin")
+        admin.set_password("TuContraseñaSuperSegura123")  # Cambiá esta clave
+        db.session.add(admin)
+        
+    db.session.commit()
+
+
+# ---------------------------------------------------------
+# RUTAS DE AUTENTICACIÓN
+# ---------------------------------------------------------
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -57,25 +64,13 @@ def logout():
     logout_user()
     return redirect(url_for("login"))
 
-# --- RUTAS PROTEGIDAS DEL SISTEMA ---
 
-@app.route("/")
-@login_required
-def index():
-    # Tu vista principal de inventario
-    return render_template("index.html")
+# ---------------------------------------------------------
+# DASHBOARD PRINCIPAL
+# ---------------------------------------------------------
 
-def create_initial_admin():
-    with app.app_context():
-        if not User.query.filter_by(username="admin").first():
-            admin = User(username="admin")
-            admin.set_password("TuContraseñaSuperSegura123")  # Cambiá esto por la clave que quieras
-            db.session.add(admin)
-            db.session.commit()
-
-# Ejecutar al iniciar la app
-create_initial_admin()
 @app.route('/')
+@login_required
 def index():
     productos = Producto.query.all()
     clientes_list = Cliente.query.all()
@@ -106,6 +101,7 @@ def index():
 # ---------------------------------------------------------
 
 @app.route('/productos', methods=['GET', 'POST'])
+@login_required
 def productos():
     if request.method == 'POST':
         nombre = request.form.get('nombre')
@@ -148,6 +144,7 @@ def productos():
 
 
 @app.route('/productos/<int:producto_id>/ajustar-stock', methods=['POST'])
+@login_required
 def ajustar_stock(producto_id):
     nuevo_stock = int(request.form.get('nuevo_stock', 0))
     prod = Producto.query.get_or_404(producto_id)
@@ -158,6 +155,7 @@ def ajustar_stock(producto_id):
 
 
 @app.route('/productos/<int:producto_id>/editar', methods=['GET', 'POST'])
+@login_required
 def editar_producto(producto_id):
     prod = Producto.query.get_or_404(producto_id)
     tipos = TipoCliente.query.all()
@@ -201,6 +199,7 @@ def editar_producto(producto_id):
 # ---------------------------------------------------------
 
 @app.route('/stock')
+@login_required
 def stock():
     prods = Producto.query.all()
     tipos = TipoCliente.query.all()
@@ -219,6 +218,7 @@ def stock():
 # ---------------------------------------------------------
 
 @app.route('/compras', methods=['GET', 'POST'])
+@login_required
 def compras():
     if request.method == 'POST':
         producto_id = int(request.form.get('producto_id'))
@@ -258,6 +258,7 @@ def compras():
 # ---------------------------------------------------------
 
 @app.route('/clientes', methods=['GET', 'POST'])
+@login_required
 def clientes():
     if request.method == 'POST':
         nombre = request.form.get('nombre')
@@ -287,6 +288,7 @@ def clientes():
 # ---------------------------------------------------------
 
 @app.route('/api/obtener-precio', methods=['GET'])
+@login_required
 def obtener_precio_api():
     cliente_id = request.args.get('cliente_id', type=int)
     producto_id = request.args.get('producto_id', type=int)
@@ -315,6 +317,7 @@ def obtener_precio_api():
 
 
 @app.route('/ventas', methods=['GET', 'POST'])
+@login_required
 def ventas():
     if request.method == 'POST':
         cliente_id = int(request.form.get('cliente_id'))
@@ -362,6 +365,7 @@ def ventas():
 # ---------------------------------------------------------
 
 @app.route('/balance')
+@login_required
 def balance():
     filtro = request.args.get('filtro', 'mes')
     hoy = datetime.utcnow().date()
@@ -395,6 +399,7 @@ def balance():
 
 
 @app.route('/historial')
+@login_required
 def historial():
     compras_list = Compra.query.all()
     ventas_list = Venta.query.all()
@@ -424,23 +429,24 @@ def historial():
     movimientos.sort(key=lambda x: x['fecha'], reverse=True)
 
     return render_template('historial.html', movimientos=movimientos)
+
+
 # ---------------------------------------------------------
 # RUTAS DE ELIMINACIÓN
 # ---------------------------------------------------------
 
 @app.route('/productos/<int:producto_id>/eliminar', methods=['POST'])
+@login_required
 def eliminar_producto(producto_id):
     prod = Producto.query.get_or_404(producto_id)
-    
-    # Eliminar precios asociados primero para mantener integridad referencial
     PrecioProducto.query.filter_by(producto_id=prod.id).delete()
-    
     db.session.delete(prod)
     db.session.commit()
     return redirect(url_for('productos'))
 
 
 @app.route('/clientes/<int:cliente_id>/eliminar', methods=['POST'])
+@login_required
 def eliminar_cliente(cliente_id):
     cliente = Cliente.query.get_or_404(cliente_id)
     db.session.delete(cliente)
@@ -449,10 +455,9 @@ def eliminar_cliente(cliente_id):
 
 
 @app.route('/ventas/<int:venta_id>/eliminar', methods=['POST'])
+@login_required
 def eliminar_venta(venta_id):
     venta = Venta.query.get_or_404(venta_id)
-    
-    # Reestablecer el stock al cancelar/eliminar la venta
     producto = Producto.query.get(venta.producto_id)
     if producto:
         producto.stock_cajas += venta.cantidad_cajas
@@ -463,10 +468,9 @@ def eliminar_venta(venta_id):
 
 
 @app.route('/compras/<int:compra_id>/eliminar', methods=['POST'])
+@login_required
 def eliminar_compra(compra_id):
     compra = Compra.query.get_or_404(compra_id)
-    
-    # Descontar el stock que se había sumado con esta compra
     producto = Producto.query.get(compra.producto_id)
     if producto:
         producto.stock_cajas = max(0, producto.stock_cajas - compra.cantidad_cajas)
@@ -474,6 +478,7 @@ def eliminar_compra(compra_id):
     db.session.delete(compra)
     db.session.commit()
     return redirect(url_for('compras'))
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
