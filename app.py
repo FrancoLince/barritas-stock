@@ -1,13 +1,19 @@
 from datetime import datetime, timedelta
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from database import db, init_db
-from models import TipoCliente, Producto, PrecioProducto, Compra, Cliente, Venta
+from models import TipoCliente, Producto, PrecioProducto, Compra, Cliente, Venta,User
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-change-me')
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev_key_super_secreta")
 
 init_db(app)
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login"
+login_manager.login_message = "Por favor, inicia sesión para acceder."
 
 # Seed de Tipos de Cliente iniciales
 with app.app_context():
@@ -21,7 +27,54 @@ with app.app_context():
 # ---------------------------------------------------------
 # DASHBOARD PRINCIPAL
 # ---------------------------------------------------------
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
+# --- RUTAS DE AUTENTICACIÓN ---
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for("index"))
+        
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        user = User.query.filter_by(username=username).first()
+        
+        if user and user.check_password(password):
+            login_user(user)
+            return redirect(url_for("index"))
+        else:
+            flash("Usuario o contraseña incorrectos", "error")
+            
+    return render_template("login.html")
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("login"))
+
+# --- RUTAS PROTEGIDAS DEL SISTEMA ---
+
+@app.route("/")
+@login_required
+def index():
+    # Tu vista principal de inventario
+    return render_template("index.html")
+
+def create_initial_admin():
+    with app.app_context():
+        if not User.query.filter_by(username="admin").first():
+            admin = User(username="admin")
+            admin.set_password("TuContraseñaSuperSegura123")  # Cambiá esto por la clave que quieras
+            db.session.add(admin)
+            db.session.commit()
+
+# Ejecutar al iniciar la app
+create_initial_admin()
 @app.route('/')
 def index():
     productos = Producto.query.all()
