@@ -68,8 +68,9 @@
             <th>Cajas</th>
             <th>Precio/Caja</th>
             <th>Total Venta</th>
-            <th>OBSERVACIONES</th>
+            <th>Observaciones</th>
             <th>Ganancia</th>
+            <th>Acciones</th>
         </tr>
     </thead>
     <tbody>
@@ -81,16 +82,17 @@
             <td>{{ v.cantidad_cajas }} cajas</td>
             <td>${{ "{:,.2f}".format(v.precio_por_caja) }}</td>
             <td><strong>${{ "{:,.2f}".format(v.total) }}</strong></td>
+            <td>{{ v.observaciones or '-' }}</td>
             <td><span class="badge success">+${{ "{:,.2f}".format(v.ganancia) }}</span></td>
             <td>
                 <form action="{{ url_for('eliminar_venta', venta_id=v.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Anular esta venta? Se devolverá el stock al producto.');">
-                <button type="submit" class="btn" style="background-color: #dc2626; padding: 4px 8px; font-size: 0.8rem;">🗑️ Anular</button>
+                    <button type="submit" class="btn" style="background-color: #dc2626; padding: 4px 8px; font-size: 0.8rem;">🗑️ Anular</button>
                 </form>
             </td>
         </tr>
         {% else %}
         <tr>
-            <td colspan="7">No se han registrado ventas aún.</td>
+            <td colspan="9">No se han registrado ventas aún.</td>
         </tr>
         {% endfor %}
     </tbody>
