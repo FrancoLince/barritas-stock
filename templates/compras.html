@@ -47,10 +47,11 @@
     <thead>
         <tr>
             <th>Fecha</th>
-            <th>Proveedor / Producto</th>
+            <th>Producto</th>
             <th>Cajas</th>
             <th>Costo/Caja</th>
-            <th>Total Compra</th>
+            <th>Costo Total</th>
+            <th>Proveedor</th>
             <th>Observaciones</th>
             <th>Acciones</th>
         </tr>
@@ -60,9 +61,10 @@
         <tr>
             <td>{{ c.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
             <td><strong>{{ c.producto.nombre }}</strong> ({{ c.producto.sabor }})</td>
-            <td>{{ c.cantidad_cajas }} cajas</td>
+            <td>+{{ c.cantidad_cajas }} cajas</td>
             <td>${{ "{:,.2f}".format(c.costo_por_caja) }}</td>
             <td><strong>${{ "{:,.2f}".format(c.total) }}</strong></td>
+            <td>{{ c.proveedor or '-' }}</td>
             <td>{{ c.observaciones or '-' }}</td>
             <td>
                 <form action="{{ url_for('eliminar_compra', compra_id=c.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Anular esta compra? Se descontará el stock agregando al producto.');">
@@ -72,7 +74,7 @@
         </tr>
         {% else %}
         <tr>
-            <td colspan="7">No se han registrado compras aún.</td>
+            <td colspan="8">No se han registrado compras aún.</td>
         </tr>
         {% endfor %}
     </tbody>
