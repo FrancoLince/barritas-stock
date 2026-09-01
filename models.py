@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from database import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -16,11 +16,12 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+
 class TipoCliente(db.Model):
     __tablename__ = 'tipo_cliente'
     
     id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(50), unique=True, nullable=False) # ej: Mayorista, Revendedor, Minorista
+    nombre = db.Column(db.String(50), unique=True, nullable=False)
     
     clientes = db.relationship('Cliente', backref='tipo_rel', lazy=True)
     precios = db.relationship('PrecioProducto', backref='tipo_rel', lazy=True)
@@ -36,7 +37,7 @@ class Producto(db.Model):
     nombre = db.Column(db.String(100), nullable=False)
     marca = db.Column(db.String(50), nullable=False)
     sabor = db.Column(db.String(50), nullable=False)
-    contenido_caja = db.Column(db.Integer, nullable=False) # Unidades por caja (solo informativo)
+    contenido_caja = db.Column(db.Integer, nullable=False)
     stock_cajas = db.Column(db.Integer, default=0, nullable=False)
     stock_minimo = db.Column(db.Integer, default=5, nullable=False)
     costo_caja = db.Column(db.Float, default=0.0, nullable=False)
@@ -76,7 +77,7 @@ class Cliente(db.Model):
     direccion = db.Column(db.String(150), nullable=True)
     tipo_cliente_id = db.Column(db.Integer, db.ForeignKey('tipo_cliente.id'), nullable=False)
     observaciones = db.Column(db.Text, nullable=True)
-    fecha_alta = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha_alta = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     ventas = db.relationship('Venta', backref='cliente', lazy=True)
 
@@ -90,7 +91,7 @@ class Compra(db.Model):
     costo_por_caja = db.Column(db.Float, nullable=False)
     costo_total = db.Column(db.Float, nullable=False)
     proveedor = db.Column(db.String(100), nullable=True)
-    fecha = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     observaciones = db.Column(db.Text, nullable=True)
 
 
@@ -105,5 +106,5 @@ class Venta(db.Model):
     total = db.Column(db.Float, nullable=False)
     costo_total = db.Column(db.Float, nullable=False)
     ganancia = db.Column(db.Float, nullable=False)
-    fecha = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     observaciones = db.Column(db.Text, nullable=True)
