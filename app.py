@@ -8,6 +8,9 @@ from models import TipoCliente, Producto, PrecioProducto, Compra, Cliente, Venta
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev_key_super_secreta")
 
+# Configuración de duración de sesión (ejemplo: 30 minutos de inactividad)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
+
 init_db(app)
 
 login_manager = LoginManager()
