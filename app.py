@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, abort
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from database import db, init_db
 from models import TipoCliente, Producto, PrecioProducto, Compra, Cliente, Venta, User
@@ -502,6 +502,17 @@ def eliminar_venta(venta_id):
     db.session.commit()
     flash("Venta eliminada y stock devuelto correctamente.", "info")
     return redirect(url_for('ventas'))
-
+@app.route('/descargar-backup-barritas-2026')
+def descargar_backup():
+    # Intenta encontrar el archivo en la raíz del proyecto o en la carpeta instance
+    path_raiz = os.path.join(app.root_path, 'barritas.db')
+    path_instance = os.path.join(app.instance_path, 'barritas.db')
+    
+    if os.path.exists(path_raiz):
+        return send_file(path_raiz, as_attachment=True, download_name='backup_barritas.db')
+    elif os.path.exists(path_instance):
+        return send_file(path_instance, as_attachment=True, download_name='backup_barritas.db')
+    else:
+        return "No se encontró el archivo de la base de datos en el servidor.", 404
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
