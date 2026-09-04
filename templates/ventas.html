@@ -91,8 +91,45 @@
         </div>
     </div>
 
+    <!-- TARJETAS DE RESUMEN POR ESTADO / MÉTODO DE PAGO -->
+    <h4 class="mt-5 mb-3">Resumen de Montos por Estado</h4>
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-success text-center shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Efectivo</h6>
+                    <h4 class="card-title text-success mb-0" id="montoEfectivo">$0.00</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-primary text-center shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Transferencia</h6>
+                    <h4 class="card-title text-primary mb-0" id="montoTransferencia">$0.00</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-danger text-center shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Debiendo</h6>
+                    <h4 class="card-title text-danger mb-0" id="montoDebiendo">$0.00</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-warning text-center shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">En Proceso</h6>
+                    <h4 class="card-title text-warning mb-0" id="montoEnProceso">$0.00</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- LISTADO DE VENTAS REGISTRADAS -->
-    <div class="d-flex justify-content-between align-items-center mt-5 mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
         <h3>Historial de Ventas</h3>
 
         <!-- FILTRO POR ESTADO / MÉTODO DE PAGO -->
@@ -122,7 +159,7 @@
             </thead>
             <tbody>
                 {% for v in ventas %}
-                <tr data-estado="{{ v.observaciones or '-' }}">
+                <tr data-estado="{{ v.observaciones or '-' }}" data-total="{{ v.total }}">
                     <td>{{ v.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
                     <td>{{ v.cliente.nombre }}</td>
                     <td>
@@ -272,21 +309,50 @@ document.getElementById('formVenta').addEventListener('submit', (e) => {
     }
 });
 
-// 6. FILTRO RÁPIDO EN TIEMPO REAL PARA EL HISTORIAL DE VENTAS
-function filtrarTablaVentas() {
+// 6. CALCULAR RESUMEN DE MONTOS Y FILTRAR TABLA
+function calcularTotalesYFiltrar() {
     const estadoSeleccionado = document.getElementById('filtroEstadoTabla').value;
     const filas = document.querySelectorAll('#tablaHistorialVentas tbody tr');
 
+    let totalEfectivo = 0;
+    let totalTransferencia = 0;
+    let totalDebiendo = 0;
+    let totalEnProceso = 0;
+
     filas.forEach(fila => {
         const estadoFila = fila.getAttribute('data-estado');
+        const totalFila = parseFloat(fila.getAttribute('data-total')) || 0;
+
         if (!estadoFila) return;
 
+        // Sumar montos globales
+        if (estadoFila === 'Efectivo') totalEfectivo += totalFila;
+        if (estadoFila === 'Transferencia') totalTransferencia += totalFila;
+        if (estadoFila === 'Debiendo') totalDebiendo += totalFila;
+        if (estadoFila === 'En Proceso') totalEnProceso += totalFila;
+
+        // Filtrar filas de la tabla
         if (estadoSeleccionado === 'todos' || estadoFila === estadoSeleccionado) {
             fila.style.display = '';
         } else {
             fila.style.display = 'none';
         }
     });
+
+    // Actualizar cuadros de montos
+    document.getElementById('montoEfectivo').textContent = `$${totalEfectivo.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('montoTransferencia').textContent = `$${totalTransferencia.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('montoDebiendo').textContent = `$${totalDebiendo.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('montoEnProceso').textContent = `$${totalEnProceso.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 }
+
+function filtrarTablaVentas() {
+    calcularTotalesYFiltrar();
+}
+
+// Ejecutar calculo de totales al cargar la página
+document.addEventListener('DOMContentLoaded', () => {
+    calcularTotalesYFiltrar();
+});
 </script>
 {% endblock %}
