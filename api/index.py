@@ -1,3 +1,5 @@
-from app import app
+from app import app, db
 
-# Vercel uses this Flask WSGI application as the Python function entrypoint.
+with app.app_context():
+    db.drop_all()    # Elimina todas las tablas existentes
+    db.create_all()  # Crea todas las tablas desde cero
