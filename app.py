@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, current_app
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from database import db, init_db
 from models import TipoCliente, Producto, PrecioProducto, Compra, Cliente, Venta, User
@@ -502,27 +502,48 @@ def eliminar_venta(venta_id):
     db.session.commit()
     flash("Venta eliminada y stock devuelto correctamente.", "info")
     return redirect(url_for('ventas'))
+    
 @app.route('/descargar-backup-barritas-2026')
 def descargar_backup():
-    # Rutas donde Flask suele guardar bases de datos
-    directorios_busqueda = [
-        app.root_path,
-        app.instance_path,
-        os.path.join(app.root_path, 'instance')
+    # 1. Obtener la URI configurada en SQLAlchemy
+    db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    
+    # 2. Si usa SQLite en un archivo, extraer la ruta limpia
+    db_filename = None
+    if db_uri.startswith('sqlite:///'):
+        db_filename = db_uri.replace('sqlite:///', '')
+
+    # Rutas donde se buscará el archivo
+    rutas_a_probar = [
+        db_filename,
+        os.path.join(app.root_path, db_filename) if db_filename else None,
+        os.path.join(app.instance_path, db_filename) if db_filename else None,
+        os.path.join(app.root_path, 'barritas.db'),
+        os.path.join(app.instance_path, 'barritas.db'),
+        os.path.join(app.root_path, 'database.db'),
+        os.path.join(app.instance_path, 'database.db'),
     ]
-    
-    # Busca cualquier archivo que termine en .db o .sqlite
-    for directorio in directorios_busqueda:
-        if os.path.exists(directorio):
-            for archivo in os.listdir(directorio):
-                if archivo.endswith('.db') or archivo.endswith('.sqlite'):
-                    ruta_completa = os.path.join(directorio, archivo)
-                    return send_file(
-                        ruta_completa,
-                        as_attachment=True,
-                        download_name=archivo
-                    )
-    
-    return "No se encontró ningún archivo de base de datos (.db) en el servidor.", 404
+
+    # Probar cada ruta y entregar el archivo si existe
+    for ruta in rutas_a_probar:
+        if ruta and os.path.exists(ruta) and os.path.isfile(ruta):
+            return send_file(
+                ruta,
+                as_attachment=True,
+                download_name=os.path.basename(ruta)
+            )
+
+    # 3. Si no encuentra el archivo, muestra el diagnóstico completo en pantalla
+    archivos_en_root = os.listdir(app.root_path) if os.path.exists(app.root_path) else []
+    archivos_en_instance = os.listdir(app.instance_path) if os.path.exists(app.instance_path) else []
+
+    return f"""
+    <h2>Diagnóstico de Base de Datos</h2>
+    <p><b>URI de Base de Datos en app:</b> {db_uri}</p>
+    <p><b>Ruta Raíz del Proyecto:</b> {app.root_path}</p>
+    <p><b>Archivos en Raíz:</b> {archivos_en_root}</p>
+    <p><b>Ruta Instance:</b> {app.instance_path}</p>
+    <p><b>Archivos en Instance:</b> {archivos_en_instance}</p>
+    """, 404
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
