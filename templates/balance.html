@@ -1,60 +1,84 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<header>
-    <h1>Balance Financiero</h1>
-</header>
+<div class="container mt-4">
+    <h2>Balance y Rendimiento</h2>
 
-<div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
-    <strong>Filtrar Período:</strong>
-    <a href="{{ url_for('balance', filtro='hoy') }}" class="btn" style="padding: 6px 12px; font-size: 0.85rem;">Hoy</a>
-    <a href="{{ url_for('balance', filtro='semana') }}" class="btn" style="padding: 6px 12px; font-size: 0.85rem;">Esta Semana</a>
-    <a href="{{ url_for('balance', filtro='mes') }}" class="btn" style="padding: 6px 12px; font-size: 0.85rem;">Este Mes</a>
-    <a href="{{ url_for('balance', filtro='anio') }}" class="btn" style="padding: 6px 12px; font-size: 0.85rem;">Este Año</a>
+    <!-- FILTROS DE TIEMPO -->
+    <div class="btn-group mb-4" role="group">
+        <a href="{{ url_for('balance', filtro='hoy') }}" class="btn btn-outline-primary {% if filtro_actual == 'hoy' %}active{% endif %}">Hoy</a>
+        <a href="{{ url_for('balance', filtro='semana') }}" class="btn btn-outline-primary {% if filtro_actual == 'semana' %}active{% endif %}">Esta Semana</a>
+        <a href="{{ url_for('balance', filtro='mes') }}" class="btn btn-outline-primary {% if filtro_actual == 'mes' %}active{% endif %}">Este Mes</a>
+        <a href="{{ url_for('balance', filtro='anio') }}" class="btn btn-outline-primary {% if filtro_actual == 'anio' %}active{% endif %}">Este Año</a>
+    </div>
+
+    <!-- TARJETAS DE MÉTRICAS -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-white bg-success shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Ingresos Totales</h5>
+                    <h3 class="card-text">${{ "{:,.2f}".format(ingresos) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-secondary shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Costos Totales</h5>
+                    <h3 class="card-text">${{ "{:,.2f}".format(costos) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-primary shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Ganancia Neta</h5>
+                    <h3 class="card-text">${{ "{:,.2f}".format(ganancia) }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLA DE VENTAS DEL PERÍODO -->
+    <h3>Ventas del Período</h3>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Fecha</th>
+                    <th>Cliente</th>
+                    <th>Productos Vendidos</th>
+                    <th>Total</th>
+                    <th>Costo</th>
+                    <th>Ganancia</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in ventas %}
+                <tr>
+                    <td>{{ v.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td>{{ v.cliente.nombre }}</td>
+                    <td>
+                        <ul class="mb-0 ps-3">
+                            {% for d in v.detalles %}
+                                <li>{{ d.cantidad_cajas }}x {{ d.producto.nombre }} ({{ d.producto.sabor }})</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                    <td><strong>${{ "{:,.2f}".format(v.total) }}</strong></td>
+                    <td class="text-secondary">${{ "{:,.2f}".format(v.costo_total) }}</td>
+                    <td class="text-success"><strong>${{ "{:,.2f}".format(v.ganancia) }}</strong></td>
+                    <td><span class="badge bg-info text-dark">{{ v.observaciones or '-' }}</span></td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted">No hay ventas cobradas registradas para este período.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
-
-<div class="form-grid" style="margin-bottom: 25px;">
-    <div class="card-form">
-        <small style="color: #64748b; font-weight: bold;">INGRESOS (VENTAS)</small>
-        <h2 style="color: #0284c7; margin-top: 5px;">${{ "{:,.2f}".format(ingresos) }}</h2>
-    </div>
-    <div class="card-form">
-        <small style="color: #64748b; font-weight: bold;">COSTOS (MERCADERÍA)</small>
-        <h2 style="color: #dc2626; margin-top: 5px;">${{ "{:,.2f}".format(costos) }}</h2>
-    </div>
-    <div class="card-form">
-        <small style="color: #64748b; font-weight: bold;">GANANCIA NETA</small>
-        <h2 style="color: #16a34a; margin-top: 5px;">${{ "{:,.2f}".format(ganancia) }}</h2>
-    </div>
-</div>
-
-<h3>Ventas del Período ({{ filtro_actual|upper }})</h3>
-<table class="table">
-    <thead>
-        <tr>
-            <th>Fecha</th>
-            <th>Cliente</th>
-            <th>Producto</th>
-            <th>Cajas</th>
-            <th>Total Venta</th>
-            <th>Ganancia</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for v in ventas %}
-        <tr>
-            <td>{{ v.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
-            <td>{{ v.cliente.nombre }}</td>
-            <td>{{ v.producto.nombre }} ({{ v.producto.sabor }})</td>
-            <td>{{ v.cantidad_cajas }} cjs</td>
-            <td>${{ "{:,.2f}".format(v.total) }}</td>
-            <td><strong style="color: #16a34a;">+${{ "{:,.2f}".format(v.ganancia) }}</strong></td>
-        </tr>
-        {% else %}
-        <tr>
-            <td colspan="6">No hay registros de ventas para este período.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
 {% endblock %}
