@@ -509,14 +509,13 @@ def exportar_ventas_csv():
     output = StringIO()
     writer = csv.writer(output)
     
-    # Encabezados de las columnas
-    writer.writerow(['ID', 'Fecha', 'Cliente', 'Producto', 'Cajas', 'Precio/Caja', 'Total', 'Estado/Pago', 'Ganancia'])
+    writer.writerow(['ID', 'Fecha', 'Cliente', 'Producto', 'Cajas', 'Precio/Caja', 'Total', 'Estado', 'Ganancia'])
     
     ventas = Venta.query.all()
     for v in ventas:
         writer.writerow([
             v.id,
-            v.fecha.strftime('%d/%m/%Y %H:%M'),
+            v.fecha.strftime('%d/%m/%Y %H:%M') if v.fecha else '',
             v.cliente.nombre if v.cliente else '-',
             f"{v.producto.nombre} ({v.producto.sabor})" if v.producto else '-',
             v.cantidad_cajas,
@@ -530,8 +529,7 @@ def exportar_ventas_csv():
     return Response(
         output.getvalue(),
         mimetype="text/csv",
-        headers={"Content-Disposition": "attachment;filename=backup_ventas_barritas.csv"}
+        headers={"Content-Disposition": "attachment;filename=backup_ventas.csv"}
     )
-    
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
