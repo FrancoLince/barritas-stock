@@ -1,14 +1,15 @@
 from datetime import datetime, timedelta, timezone
 import os
+import json
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from database import db, init_db
-from models import TipoCliente, Producto, PrecioProducto, Compra, Cliente, Venta, User
+from models import TipoCliente, Producto, PrecioProducto, Compra, Cliente, Venta, DetalleVenta, User
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev_key_super_secreta")
 
-# Configuración de duración de sesión (ejemplo: 30 minutos de inactividad)
+# Configuración de duración de sesión
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 init_db(app)
@@ -25,18 +26,16 @@ def load_user(user_id):
 
 # --- INICIALIZACIÓN DE DATOS (SEED) ---
 with app.app_context():
-    # Seed de Tipos de Cliente iniciales
     tipos_defecto = ['Mayorista', 'Revendedor', 'Minorista', 'Distribuidoras grandes']
     for nombre in tipos_defecto:
         if not TipoCliente.query.filter_by(nombre=nombre).first():
             db.session.add(TipoCliente(nombre=nombre))
     
-    # Lista de usuarios a crear por defecto (Usuario, Contraseña)
     usuarios_iniciales = [
-            ("admin", "admin"),
-            ("Emilia", "Barritas123"),
-            ("Analia", "Barritas123"),
-            ("Cati", "Barritas123")
+        ("admin", "admin"),
+        ("Emilia", "Barritas123"),
+        ("Analia", "Barritas123"),
+        ("Cati", "Barritas123")
     ]
 
     for username, password in usuarios_iniciales:
@@ -91,7 +90,6 @@ def index():
     clientes_list = Cliente.query.all()
     ventas_list = Venta.query.all()
 
-    # Ventas cobradas efectivamente
     ventas_cobradas = [
         v for v in ventas_list 
         if v.observaciones and ('Efectivo' in v.observaciones or 'Transferencia' in v.observaciones)
@@ -102,8 +100,10 @@ def index():
     total_costos = sum(v.costo_total for v in ventas_cobradas)
     total_ganancias = sum(v.ganancia for v in ventas_cobradas)
     
-    # Cajas vendidas totales
-    total_cajas_vendidas = sum(v.cantidad_cajas for v in ventas_list)
+    total_cajas_vendidas = sum(
+        sum(d.cantidad_cajas for d in v.detalles) if hasattr(v, 'detalles') and v.detalles else getattr(v, 'cantidad_cajas', 0)
+        for v in ventas_list
+    )
 
     alertas_stock = [p for p in productos if p.stock_cajas <= p.stock_minimo]
 
@@ -336,7 +336,7 @@ def obtener_precio_api():
     return jsonify({
         'precio_sugerido': precio_sugerido,
         'stock_disponible': producto.stock_cajas,
-        'tipo_cliente': cliente.tipo_rel.nombre
+        'tipo_cliente': cliente.tipo_rel.nombre if cliente.tipo_rel else ''
     })
 
 
@@ -345,37 +345,62 @@ def obtener_precio_api():
 def ventas():
     if request.method == 'POST':
         cliente_id = int(request.form.get('cliente_id'))
-        producto_id = int(request.form.get('producto_id'))
-        cantidad_cajas = int(request.form.get('cantidad_cajas', 1))
-        precio_por_caja = float(request.form.get('precio_por_caja', 0))
-        observaciones = request.form.get('observaciones')  # Efectivo, Transferencia, Debiendo, En Proceso
+        observaciones = request.form.get('observaciones')
+        
+        carrito_raw = request.form.get('carrito_json')
+        items = json.loads(carrito_raw) if carrito_raw else []
 
-        producto = db.session.get(Producto, producto_id) or db.first_or_404(Producto, producto_id)
-
-        if cantidad_cajas > producto.stock_cajas:
-            flash(f"Error: No hay stock suficiente. Disponible: {producto.stock_cajas} cajas.", "danger")
+        if not items:
+            flash("Debe agregar al menos un producto a la venta.", "danger")
             return redirect(url_for('ventas'))
 
-        total_venta = cantidad_cajas * precio_por_caja
-        costo_total_venta = cantidad_cajas * (producto.costo_caja or 0)
-        ganancia_venta = total_venta - costo_total_venta
+        for item in items:
+            prod = db.session.get(Producto, item['producto_id'])
+            if not prod or item['cantidad'] > prod.stock_cajas:
+                nombre = prod.nombre if prod else "Desconocido"
+                disponible = prod.stock_cajas if prod else 0
+                flash(f"Error: Stock insuficiente para {nombre}. Disponible: {disponible}", "danger")
+                return redirect(url_for('ventas'))
+
+        total_venta = 0.0
+        costo_total_venta = 0.0
 
         nueva_venta = Venta(
             cliente_id=cliente_id,
-            producto_id=producto_id,
-            cantidad_cajas=cantidad_cajas,
-            precio_por_caja=precio_por_caja,
-            total=total_venta,
-            costo_total=costo_total_venta,
-            ganancia=ganancia_venta,
-            observaciones=observaciones
+            observaciones=observaciones,
+            total=0, costo_total=0, ganancia=0
         )
-
-        producto.stock_cajas -= cantidad_cajas
-
         db.session.add(nueva_venta)
-        db.session.commit()
+        db.session.flush()
 
+        for item in items:
+            prod = db.session.get(Producto, item['producto_id'])
+            cant = int(item['cantidad'])
+            precio = float(item['precio'])
+            
+            subtotal = cant * precio
+            costo_sub = cant * (prod.costo_caja or 0)
+
+            detalle = DetalleVenta(
+                venta_id=nueva_venta.id,
+                producto_id=prod.id,
+                cantidad_cajas=cant,
+                precio_por_caja=precio,
+                subtotal=subtotal,
+                costo_subtotal=costo_sub
+            )
+            
+            prod.stock_cajas -= cant
+            
+            total_venta += subtotal
+            costo_total_venta += costo_sub
+            db.session.add(detalle)
+
+        nueva_venta.total = total_venta
+        nueva_venta.costo_total = costo_total_venta
+        nueva_venta.ganancia = total_venta - costo_total_venta
+
+        db.session.commit()
         flash('Venta registrada con éxito.', 'success')
         return redirect(url_for('ventas'))
 
@@ -432,7 +457,6 @@ def balance():
 
     ventas_filtradas = query.order_by(Venta.fecha.desc()).all()
 
-    # Filtro exclusivo para dinero efectivamente cobrado
     ventas_cobradas = [
         v for v in ventas_filtradas 
         if v.observaciones and ('Efectivo' in v.observaciones or 'Transferencia' in v.observaciones)
@@ -471,11 +495,12 @@ def historial():
         })
 
     for v in ventas_list:
+        detalles_prod = ", ".join([f"{d.producto.nombre} x{d.cantidad_cajas}" for d in v.detalles]) if hasattr(v, 'detalles') and v.detalles else "Venta"
         movimientos.append({
             'fecha': v.fecha,
             'tipo': 'VENTA (- Stock)',
-            'producto': f"{v.producto.nombre} ({v.producto.sabor})",
-            'cajas': f"-{v.cantidad_cajas}",
+            'producto': detalles_prod,
+            'cajas': f"-{sum(d.cantidad_cajas for d in v.detalles) if hasattr(v, 'detalles') and v.detalles else 0}",
             'detalle': f"Cliente: {v.cliente.nombre}",
             'monto': f"+${v.total:,.2f}"
         })
@@ -486,7 +511,7 @@ def historial():
 
 
 # ---------------------------------------------------------
-# RUTAS DE ELIMINACIÓN
+# RUTAS DE ELIMINACIÓN Y EDICIÓN
 # ---------------------------------------------------------
 
 @app.route('/productos/<int:producto_id>/eliminar', methods=['POST'])
@@ -528,14 +553,63 @@ def eliminar_cliente(cliente_id):
 @login_required
 def eliminar_venta(venta_id):
     venta = db.session.get(Venta, venta_id) or db.first_or_404(Venta, venta_id)
-    producto = db.session.get(Producto, venta.producto_id)
-    if producto:
-        producto.stock_cajas += venta.cantidad_cajas
+    
+    if hasattr(venta, 'detalles') and venta.detalles:
+        for detalle in venta.detalles:
+            producto = db.session.get(Producto, detalle.producto_id)
+            if producto:
+                producto.stock_cajas += detalle.cantidad_cajas
 
     db.session.delete(venta)
     db.session.commit()
     flash("Venta eliminada y stock devuelto correctamente.", "info")
     return redirect(url_for('ventas'))
+
+
+@app.route('/ventas/<int:venta_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_venta(venta_id):
+    venta = db.session.get(Venta, venta_id) or db.first_or_404(Venta, venta_id)
+
+    if request.method == 'POST':
+        venta.cliente_id = int(request.form.get('cliente_id'))
+        venta.observaciones = request.form.get('observaciones')
+
+        nuevo_total = 0.0
+        nuevo_costo_total = 0.0
+
+        for d in venta.detalles:
+            nueva_cant = int(request.form.get(f'cantidad_{d.id}', d.cantidad_cajas))
+            nuevo_precio = float(request.form.get(f'precio_{d.id}', d.precio_por_caja))
+
+            producto = db.session.get(Producto, d.producto_id)
+            if producto:
+                stock_disponible = producto.stock_cajas + d.cantidad_cajas
+                if nueva_cant > stock_disponible:
+                    flash(f"Error: Stock insuficiente para {producto.nombre}. Disponible: {stock_disponible}", "danger")
+                    return redirect(url_for('editar_venta', venta_id=venta.id))
+
+                diferencia = nueva_cant - d.cantidad_cajas
+                producto.stock_cajas -= diferencia
+
+            d.cantidad_cajas = nueva_cant
+            d.precio_por_caja = nuevo_precio
+            d.subtotal = nueva_cant * nuevo_precio
+            d.costo_subtotal = nueva_cant * (producto.costo_caja or 0 if producto else 0)
+
+            nuevo_total += d.subtotal
+            nuevo_costo_total += d.costo_subtotal
+
+        venta.total = nuevo_total
+        venta.costo_total = nuevo_costo_total
+        venta.ganancia = nuevo_total - nuevo_costo_total
+
+        db.session.commit()
+        flash("Venta modificada con éxito.", "success")
+        return redirect(url_for('ventas'))
+
+    clientes = Cliente.query.all()
+    return render_template('editar_venta.html', venta=venta, clientes=clientes)
 
 
 if __name__ == '__main__':
