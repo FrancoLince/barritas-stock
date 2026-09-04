@@ -1,190 +1,261 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<header>
-    <h1>Registro de Ventas</h1>
-</header>
+<div class="container mt-4">
+    <h2>Registrar Venta Multiproducto</h2>
 
-<div class="card-form">
-    <h3>Nueva Venta</h3>
-    <form action="{{ url_for('ventas') }}" method="POST" id="form-venta">
-        <div class="form-grid">
-            <div class="form-group">
-                <label>Cliente:</label>
-                <select name="cliente_id" id="cliente_id" required>
-                    <option value="">Seleccione cliente...</option>
-                    {% for c in clientes %}
-                        <option value="{{ c.id }}">{{ c.nombre }} ({{ c.tipo_rel.nombre }})</option>
-                    {% endfor %}
-                </select>
-            </div>
+    <!-- FORMULARIO DE REGISTRO -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <form id="formVenta" action="{{ url_for('ventas') }}" method="POST">
+                
+                <!-- SELECCIÓN DE CLIENTE Y ESTADO -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label for="cliente_id" class="form-label font-weight-bold">Cliente</label>
+                        <select name="cliente_id" id="cliente_id" class="form-select" required>
+                            <option value="">Seleccione un cliente...</option>
+                            {% for c in clientes %}
+                                <option value="{{ c.id }}">{{ c.nombre }} ({{ c.tipo_rel.nombre }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="observaciones" class="form-label font-weight-bold">Estado / Método de Pago</label>
+                        <select name="observaciones" id="observaciones" class="form-select" required>
+                            <option value="Efectivo">Efectivo</option>
+                            <option value="Transferencia">Transferencia</option>
+                            <option value="Debiendo">Debiendo</option>
+                            <option value="En Proceso">En Proceso</option>
+                        </select>
+                    </div>
+                </div>
 
-            <div class="form-group">
-                <label>Producto:</label>
-                <select name="producto_id" id="producto_id" required>
-                    <option value="">Seleccione producto...</option>
-                    {% for p in productos %}
-                        <option value="{{ p.id }}">{{ p.nombre }} - {{ p.sabor }} (Stock: {{ p.stock_cajas }} cjs)</option>
-                    {% endfor %}
-                </select>
-            </div>
+                <hr class="my-4">
 
-            <div class="form-group">
-                <label>Cantidad (Cajas):</label>
-                <input type="number" name="cantidad_cajas" id="cantidad_cajas" min="1" value="1" required>
-                <small id="info-stock" style="color: #64748b; font-size: 0.8rem; margin-top: 3px;"></small>
-            </div>
+                <!-- AGREGAR PRODUCTOS AL CARRITO -->
+                <h5 class="mb-3">Agregar Productos</h5>
+                <div class="row g-3 align-items-end mb-3">
+                    <div class="col-md-4">
+                        <label for="producto_id" class="form-label">Producto</label>
+                        <select id="producto_id" class="form-select">
+                            <option value="">Seleccione un producto...</option>
+                            {% for p in productos %}
+                                <option value="{{ p.id }}" data-stock="{{ p.stock_cajas }}">{{ p.nombre }} - {{ p.sabor }} (Stock: {{ p.stock_cajas }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="cantidad_cajas" class="form-label">Cantidad Cajas</label>
+                        <input type="number" id="cantidad_cajas" class="form-control" min="1" value="1">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="precio_por_caja" class="form-label">Precio por Caja ($)</label>
+                        <input type="number" step="0.01" id="precio_por_caja" class="form-control" placeholder="0.00">
+                    </div>
+                    <div class="col-md-3">
+                        <button type="button" id="btnAgregarItem" class="btn btn-secondary w-100">+ Agregar Ítem</button>
+                    </div>
+                </div>
 
-            <div class="form-group">
-                <label>Precio por Caja ($):</label>
-                <input type="number" step="0.01" name="precio_por_caja" id="precio_por_caja" required>
-                <small style="color: #64748b; font-size: 0.8rem; margin-top: 3px;">Sugerido según tipo de cliente</small>
-            </div>
+                <!-- TABLA TEMPORAL DE CARRITO -->
+                <div class="table-responsive mb-3">
+                    <table class="table table-bordered align-middle" id="tablaCarrito">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th>Cantidad</th>
+                                <th>Precio C/U</th>
+                                <th>Subtotal</th>
+                                <th class="text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Se llena dinámicamente con JavaScript -->
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="3" class="text-end">TOTAL DE LA VENTA:</th>
+                                <th id="totalVenta">$0.00</th>
+                                <th></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
 
-            <div class="form-group">
-                <label>Total Calculado ($):</label>
-                <input type="text" id="total_calculado" readonly style="background-color: #f1f5f9; font-weight: bold;">
-            </div>
+                <!-- CAMPO OCULTO QUE SE ENVÍA AL BACKEND CON LOS PRODUCTOS -->
+                <input type="hidden" name="carrito_json" id="carrito_json">
 
-            <div class="form-group">
-                <label>Estado / Método de Pago:</label>
-                <select name="observaciones" id="observaciones" required>
-                    <option value="Efectivo">Efectivo</option>
-                    <option value="Transferencia">Transferencia</option>
-                    <option value="Debiendo">Debiendo</option>
-                    <option value="En Proceso">En Proceso</option>
-                </select>
-            </div>
+                <button type="submit" class="btn btn-success btn-lg w-100 mt-2">Registrar Venta</button>
+            </form>
         </div>
+    </div>
 
-        <button type="submit" class="btn" style="background-color: #16a34a;">Registrar Venta</button>
-    </form>
+    <!-- LISTADO DE VENTAS REGISTRADAS -->
+    <h3 class="mt-5 mb-3">Historial de Ventas</h3>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Fecha</th>
+                    <th>Cliente</th>
+                    <th>Detalle de Productos</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in ventas %}
+                <tr>
+                    <td>{{ v.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td>{{ v.cliente.nombre }}</td>
+                    <td>
+                        <ul class="mb-0 ps-3">
+                            {% for d in v.detalles %}
+                                <li>{{ d.cantidad_cajas }}x {{ d.producto.nombre }} ({{ d.producto.sabor }}) - ${{ "{:,.2f}".format(d.subtotal) }}</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                    <td><strong>${{ "{:,.2f}".format(v.total) }}</strong></td>
+                    <td><span class="badge bg-info text-dark">{{ v.observaciones or '-' }}</span></td>
+                    <td class="text-center">
+                        <div class="d-flex justify-content-center gap-1">
+                            <!-- BOTÓN EDITAR -->
+                            <a href="{{ url_for('editar_venta', venta_id=v.id) }}" class="btn btn-sm btn-warning">Editar</a>
+
+                            <!-- BOTÓN ELIMINAR -->
+                            <form action="{{ url_for('eliminar_venta', venta_id=v.id) }}" method="POST" onsubmit="return confirm('¿Seguro deseas eliminar esta venta? Se devolverá el stock.');" style="display:inline;">
+                                <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
-<hr style="margin: 30px 0;">
-
-<!-- Tarjetas de discriminación de pago -->
-<div class="row mb-4" style="display: flex; gap: 15px; flex-wrap: wrap;">
-    <div style="flex: 1; min-width: 180px; background: #f0fdf4; border: 1px solid #16a34a; padding: 15px; border-radius: 8px; cursor: pointer;" onclick="filtrarVentas('Efectivo', document.getElementById('btn-efectivo'))">
-        <h6 style="color: #16a34a; margin: 0; font-size: 0.9rem;">Efectivo</h6>
-        <h4 style="color: #15803d; margin: 5px 0 0 0;">${{ "{:,.2f}".format(totales['Efectivo'] or 0) }}</h4>
-    </div>
-    <div style="flex: 1; min-width: 180px; background: #eff6ff; border: 1px solid #2563eb; padding: 15px; border-radius: 8px; cursor: pointer;" onclick="filtrarVentas('Transferencia', document.getElementById('btn-transferencia'))">
-        <h6 style="color: #2563eb; margin: 0; font-size: 0.9rem;">Transferencia</h6>
-        <h4 style="color: #1d4ed8; margin: 5px 0 0 0;">${{ "{:,.2f}".format(totales['Transferencia'] or 0) }}</h4>
-    </div>
-    <div style="flex: 1; min-width: 180px; background: #fef2f2; border: 1px solid #dc2626; padding: 15px; border-radius: 8px; cursor: pointer;" onclick="filtrarVentas('Debiendo', document.getElementById('btn-debiendo'))">
-        <h6 style="color: #dc2626; margin: 0; font-size: 0.9rem;">Debiendo</h6>
-        <h4 style="color: #b91c1c; margin: 5px 0 0 0;">${{ "{:,.2f}".format(totales['Debiendo'] or 0) }}</h4>
-    </div>
-    <div style="flex: 1; min-width: 180px; background: #fefce8; border: 1px solid #ca8a04; padding: 15px; border-radius: 8px; cursor: pointer;" onclick="filtrarVentas('En Proceso', document.getElementById('btn-proceso'))">
-        <h6 style="color: #ca8a04; margin: 0; font-size: 0.9rem;">En Proceso</h6>
-        <h4 style="color: #a16207; margin: 5px 0 0 0;">${{ "{:,.2f}".format(totales['En Proceso'] or 0) }}</h4>
-    </div>
-</div>
-
-<!-- Filtros de la tabla -->
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-    <h3>Historial de Ventas</h3>
-    <div style="display: flex; gap: 8px;">
-        <button type="button" id="btn-todos" class="btn-filter active" onclick="filtrarVentas('todos', this)" style="padding: 5px 12px; font-size: 0.85rem; cursor: pointer; border-radius: 5px; border: 1px solid #cbd5e1; background: #f8fafc;">Todos</button>
-        <button type="button" id="btn-efectivo" class="btn-filter" onclick="filtrarVentas('Efectivo', this)" style="padding: 5px 12px; font-size: 0.85rem; cursor: pointer; border-radius: 5px; border: 1px solid #16a34a; background: #f0fdf4; color: #16a34a;">Efectivo</button>
-        <button type="button" id="btn-transferencia" class="btn-filter" onclick="filtrarVentas('Transferencia', this)" style="padding: 5px 12px; font-size: 0.85rem; cursor: pointer; border-radius: 5px; border: 1px solid #2563eb; background: #eff6ff; color: #2563eb;">Transferencia</button>
-        <button type="button" id="btn-debiendo" class="btn-filter" onclick="filtrarVentas('Debiendo', this)" style="padding: 5px 12px; font-size: 0.85rem; cursor: pointer; border-radius: 5px; border: 1px solid #dc2626; background: #fef2f2; color: #dc2626;">Debiendo</button>
-        <button type="button" id="btn-proceso" class="btn-filter" onclick="filtrarVentas('En Proceso', this)" style="padding: 5px 12px; font-size: 0.85rem; cursor: pointer; border-radius: 5px; border: 1px solid #ca8a04; background: #fefce8; color: #ca8a04;">En Proceso</button>
-    </div>
-</div>
-
-<table class="table" id="tabla-ventas">
-    <thead>
-        <tr>
-            <th>Fecha</th>
-            <th>Cliente</th>
-            <th>Producto</th>
-            <th>Cajas</th>
-            <th>Precio/Caja</th>
-            <th>Total Venta</th>
-            <th>Estado / Pago</th>
-            <th>Ganancia</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for v in ventas %}
-        {% set obs = v.observaciones or '' %}
-        {% if 'Efectivo' in obs %}{% set estado_clean = 'Efectivo' %}
-        {% elif 'Transferencia' in obs %}{% set estado_clean = 'Transferencia' %}
-        {% elif 'Debiendo' in obs %}{% set estado_clean = 'Debiendo' %}
-        {% elif 'En Proceso' in obs %}{% set estado_clean = 'En Proceso' %}
-        {% else %}{% set estado_clean = obs %}{% endif %}
-
-        <tr data-estado="{{ estado_clean }}">
-            <td>{{ v.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
-            <td><strong>{{ v.cliente.nombre }}</strong> <br><small>({{ v.cliente.tipo_rel.nombre }})</small></td>
-            <td>{{ v.producto.nombre }} ({{ v.producto.sabor }})</td>
-            <td>{{ v.cantidad_cajas }} cajas</td>
-            <td>${{ "{:,.2f}".format(v.precio_por_caja) }}</td>
-            <td><strong>${{ "{:,.2f}".format(v.total) }}</strong></td>
-            <td>
-                {% if 'Efectivo' in obs %}
-                    <span style="background-color: #dcfce7; color: #15803d; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 0.8rem;">💵 Efectivo</span>
-                {% elif 'Transferencia' in obs %}
-                    <span style="background-color: #dbeafe; color: #1e40af; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 0.8rem;">💳 Transferencia</span>
-                {% elif 'Debiendo' in obs %}
-                    <span style="background-color: #fee2e2; color: #b91c1c; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 0.8rem;">⚠️ Debiendo</span>
-                {% elif 'En Proceso' in obs %}
-                    <span style="background-color: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 0.8rem;">⏳ En Proceso</span>
-                {% else %}
-                    <span style="background-color: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem;">{{ obs or '-' }}</span>
-                {% endif %}
-            </td>
-            <td>
-                {% if 'Efectivo' in obs or 'Transferencia' in obs %}
-                    <span class="badge success" style="background-color: #dcfce7; color: #15803d; padding: 4px 8px; border-radius: 6px; font-weight: bold;">
-                        +${{ "{:,.2f}".format(v.ganancia) }}
-                    </span>
-                {% else %}
-                    <span style="background-color: #f1f5f9; color: #64748b; padding: 4px 8px; border-radius: 6px; font-size: 0.85rem; font-weight: normal;" title="Pendiente de cobro (No suma al Balance)">
-                        ⏳ Por cobrar (+${{ "{:,.2f}".format(v.ganancia) }})
-                    </span>
-                {% endif %}
-            </td>
-            <td>
-                <form action="{{ url_for('eliminar_venta', venta_id=v.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Anular esta venta? Se devolverá el stock al producto.');">
-                    <button type="submit" class="btn" style="background-color: #dc2626; padding: 4px 8px; font-size: 0.8rem;">🗑️ Anular</button>
-                </form>
-            </td>
-        </tr>
-        {% else %}
-        <tr>
-            <td colspan="9">No se han registrado ventas aún.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-
+<!-- JAVASCRIPT DEL CARRITO Y AUTOCOMPLETADO DE PRECIOS -->
 <script>
-function filtrarVentas(estado, btn) {
-    const filas = document.querySelectorAll('#tabla-ventas tbody tr');
-    
-    document.querySelectorAll('.btn-filter').forEach(b => {
-        b.style.opacity = '0.5';
-        b.classList.remove('active');
-    });
+let carrito = [];
 
-    if(btn) {
-        btn.style.opacity = '1.0';
-        btn.classList.add('active');
+const clienteSelect = document.getElementById('cliente_id');
+const productoSelect = document.getElementById('producto_id');
+const cantidadInput = document.getElementById('cantidad_cajas');
+const precioInput = document.getElementById('precio_por_caja');
+const btnAgregar = document.getElementById('btnAgregarItem');
+const tablaBody = document.querySelector('#tablaCarrito tbody');
+const totalVentaElem = document.getElementById('totalVenta');
+const carritoJsonInput = document.getElementById('carrito_json');
+
+// 1. Obtener precio sugerido cuando cambian cliente o producto
+function actualizarPrecioSugerido() {
+    const clienteId = clienteSelect.value;
+    const productoId = productoSelect.value;
+
+    if (clienteId && productoId) {
+        fetch(`/api/obtener-precio?cliente_id=${clienteId}&producto_id=${productoId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.precio_sugerido) {
+                    precioInput.value = data.precio_sugerido;
+                }
+            })
+            .catch(err => console.error("Error al obtener precio:", err));
+    }
+}
+
+clienteSelect.addEventListener('change', actualizarPrecioSugerido);
+productoSelect.addEventListener('change', actualizarPrecioSugerido);
+
+// 2. Agregar ítem al carrito
+btnAgregar.addEventListener('click', () => {
+    const productoId = productoSelect.value;
+    const productoNombre = productoSelect.options[productoSelect.selectedIndex]?.text;
+    const cantidad = parseInt(cantidadInput.value) || 0;
+    const precio = parseFloat(precioInput.value) || 0;
+    const stockDisponible = parseInt(productoSelect.options[productoSelect.selectedIndex]?.getAttribute('data-stock')) || 0;
+
+    if (!productoId) {
+        alert("Selecciona un producto.");
+        return;
+    }
+    if (cantidad <= 0) {
+        alert("La cantidad debe ser mayor a 0.");
+        return;
+    }
+    if (cantidad > stockDisponible) {
+        alert(`Stock insuficiente. Solo hay ${stockDisponible} cajas disponibles.`);
+        return;
+    }
+    if (precio <= 0) {
+        alert("Ingresa un precio válido.");
+        return;
     }
 
-    filas.forEach(fila => {
-        const estadoFila = fila.getAttribute('data-estado');
-        if (estado === 'todos' || estadoFila === estado) {
-            fila.style.display = '';
-        } else {
-            fila.style.display = 'none';
+    // Verificar si ya está en el carrito para sumar la cantidad
+    const indexExistente = carrito.findIndex(item => item.producto_id === productoId);
+    if (indexExistente !== -1) {
+        if (carrito[indexExistente].cantidad + cantidad > stockDisponible) {
+            alert(`No podés agregar esa cantidad. Supera el stock disponible (${stockDisponible}).`);
+            return;
         }
+        carrito[indexExistente].cantidad += cantidad;
+        carrito[indexExistente].precio = precio;
+    } else {
+        carrito.push({
+            producto_id: productoId,
+            nombre: productoNombre,
+            cantidad: cantidad,
+            precio: precio
+        });
+    }
+
+    renderizarCarrito();
+    // Limpiar campos de producto
+    productoSelect.value = "";
+    cantidadInput.value = 1;
+    precioInput.value = "";
+});
+
+// 3. Dibujar tabla de carrito
+function renderizarCarrito() {
+    tablaBody.innerHTML = "";
+    let total = 0;
+
+    carrito.forEach((item, index) => {
+        const subtotal = item.cantidad * item.precio;
+        total += subtotal;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${item.nombre}</td>
+            <td>${item.cantidad}</td>
+            <td>$${item.precio.toFixed(2)}</td>
+            <td>$${subtotal.toFixed(2)}</td>
+            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarItem(${index})">❌</button></td>
+        `;
+        tablaBody.appendChild(tr);
     });
+
+    totalVentaElem.textContent = `$${total.toFixed(2)}`;
+    carritoJsonInput.value = JSON.stringify(carrito);
 }
+
+// 4. Eliminar ítem del carrito
+function eliminarItem(index) {
+    carrito.splice(index, 1);
+    renderizarCarrito();
+}
+
+// 5. Validar que haya al menos un ítem antes de enviar
+document.getElementById('formVenta').addEventListener('submit', (e) => {
+    if (carrito.length === 0) {
+        e.preventDefault();
+        alert("Agrega al menos un producto al carrito antes de registrar la venta.");
+    }
+});
 </script>
 {% endblock %}
