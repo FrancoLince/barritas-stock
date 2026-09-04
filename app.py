@@ -26,7 +26,7 @@ def load_user(user_id):
 # --- INICIALIZACIÓN DE DATOS (SEED) ---
 with app.app_context():
     # Seed de Tipos de Cliente iniciales
-    tipos_defecto = ['Mayorista', 'Revendedor', 'Minorista']
+    tipos_defecto = ['Mayorista', 'Revendedor', 'Minorista', 'Distribuidoras grandes']
     for nombre in tipos_defecto:
         if not TipoCliente.query.filter_by(nombre=nombre).first():
             db.session.add(TipoCliente(nombre=nombre))
