@@ -1,11 +1,9 @@
-import csv
 from datetime import datetime, timedelta, timezone
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from database import db, init_db
 from models import TipoCliente, Producto, PrecioProducto, Compra, Cliente, Venta, User
-from io import StringIO
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev_key_super_secreta")
@@ -504,32 +502,6 @@ def eliminar_venta(venta_id):
     db.session.commit()
     flash("Venta eliminada y stock devuelto correctamente.", "info")
     return redirect(url_for('ventas'))
-@app.route('/exportar-ventas-csv')
-def exportar_ventas_csv():
-    output = StringIO()
-    writer = csv.writer(output)
-    
-    writer.writerow(['ID', 'Fecha', 'Cliente', 'Producto', 'Cajas', 'Precio/Caja', 'Total', 'Estado', 'Ganancia'])
-    
-    ventas = Venta.query.all()
-    for v in ventas:
-        writer.writerow([
-            v.id,
-            v.fecha.strftime('%d/%m/%Y %H:%M') if v.fecha else '',
-            v.cliente.nombre if v.cliente else '-',
-            f"{v.producto.nombre} ({v.producto.sabor})" if v.producto else '-',
-            v.cantidad_cajas,
-            v.precio_por_caja,
-            v.total,
-            v.observaciones or '-',
-            v.ganancia
-        ])
-    
-    output.seek(0)
-    return Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment;filename=backup_ventas.csv"}
-    )
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
