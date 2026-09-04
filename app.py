@@ -42,12 +42,10 @@ with app.app_context():
     for username, password in usuarios_iniciales:
         usuario = User.query.filter_by(username=username).first()
         if not usuario:
-            # Si no existe, lo crea
             nuevo_usuario = User(username=username)
             nuevo_usuario.set_password(password)
             db.session.add(nuevo_usuario)
         else:
-            # Si ya existe, le actualiza la contraseña
             usuario.set_password(password)
         
     db.session.commit()
@@ -68,7 +66,6 @@ def login():
         user = User.query.filter_by(username=username).first()
         
         if user and user.check_password(password):
-            # Si pasás remember=False, la sesión se destruye al cerrar el navegador
             login_user(user, remember=False) 
             return redirect(url_for("index"))
         else:
@@ -94,10 +91,18 @@ def index():
     clientes_list = Cliente.query.all()
     ventas_list = Venta.query.all()
 
+    # Ventas cobradas efectivamente
+    ventas_cobradas = [
+        v for v in ventas_list 
+        if v.observaciones and ('Efectivo' in v.observaciones or 'Transferencia' in v.observaciones)
+    ]
+
     total_cajas_stock = sum(p.stock_cajas for p in productos)
-    total_ventas_dinero = sum(v.total for v in ventas_list)
-    total_costos = sum(v.costo_total for v in ventas_list)
-    total_ganancias = sum(v.ganancia for v in ventas_list)
+    total_ventas_dinero = sum(v.total for v in ventas_cobradas)
+    total_costos = sum(v.costo_total for v in ventas_cobradas)
+    total_ganancias = sum(v.ganancia for v in ventas_cobradas)
+    
+    # Cajas vendidas totales
     total_cajas_vendidas = sum(v.cantidad_cajas for v in ventas_list)
 
     alertas_stock = [p for p in productos if p.stock_cajas <= p.stock_minimo]
@@ -213,7 +218,7 @@ def editar_producto(producto_id):
 
 
 # ---------------------------------------------------------
-# CONTROL DE STOCK (Protegido contra nulos)
+# CONTROL DE STOCK
 # ---------------------------------------------------------
 
 @app.route('/stock')
@@ -226,7 +231,6 @@ def stock():
     for p in prods:
         matriz_precios[p.id] = {}
         for precio_obj in p.precios:
-            # Validamos que la relación tipo_rel exista antes de consultar
             if precio_obj.tipo_rel:
                 matriz_precios[p.id][precio_obj.tipo_rel.nombre] = precio_obj.precio_caja
 
@@ -342,17 +346,18 @@ def ventas():
     if request.method == 'POST':
         cliente_id = int(request.form.get('cliente_id'))
         producto_id = int(request.form.get('producto_id'))
-        cantidad_cajas = int(request.form.get('cantidad_cajas'))
-        precio_por_caja = float(request.form.get('precio_por_caja'))
-        observaciones = request.form.get('observaciones')
+        cantidad_cajas = int(request.form.get('cantidad_cajas', 1))
+        precio_por_caja = float(request.form.get('precio_por_caja', 0))
+        observaciones = request.form.get('observaciones')  # Efectivo, Transferencia, Debiendo, En Proceso
 
         producto = db.session.get(Producto, producto_id) or db.first_or_404(Producto, producto_id)
 
         if cantidad_cajas > producto.stock_cajas:
-            return f"Error: No hay stock suficiente. Stock disponible: {producto.stock_cajas} cajas.", 400
+            flash(f"Error: No hay stock suficiente. Disponible: {producto.stock_cajas} cajas.", "danger")
+            return redirect(url_for('ventas'))
 
         total_venta = cantidad_cajas * precio_por_caja
-        costo_total_venta = cantidad_cajas * producto.costo_caja
+        costo_total_venta = cantidad_cajas * (producto.costo_caja or 0)
         ganancia_venta = total_venta - costo_total_venta
 
         nueva_venta = Venta(
@@ -363,7 +368,7 @@ def ventas():
             total=total_venta,
             costo_total=costo_total_venta,
             ganancia=ganancia_venta,
-            observaciones=f"Registrado por: {current_user.username}. " + (observaciones or "")
+            observaciones=observaciones
         )
 
         producto.stock_cajas -= cantidad_cajas
@@ -371,13 +376,36 @@ def ventas():
         db.session.add(nueva_venta)
         db.session.commit()
 
+        flash('Venta registrada con éxito.', 'success')
         return redirect(url_for('ventas'))
 
-    lista_ventas = Venta.query.order_by(Venta.fecha.desc()).all()
-    clientes_list = Cliente.query.all()
-    productos_list = Producto.query.filter(Producto.stock_cajas > 0).all()
+    # GET
+    estado_filtro = request.args.get('estado', 'todos')
+    todas_las_ventas = Venta.query.order_by(Venta.fecha.desc()).all()
 
-    return render_template('ventas.html', ventas=lista_ventas, clientes=clientes_list, productos=productos_list)
+    if estado_filtro != 'todos':
+        ventas_filtradas = [v for v in todas_las_ventas if v.observaciones and estado_filtro in v.observaciones]
+    else:
+        ventas_filtradas = todas_las_ventas
+
+    clientes = Cliente.query.all()
+    productos = Producto.query.filter(Producto.stock_cajas > 0).all()
+
+    totales = {
+        'Efectivo': sum(v.total for v in todas_las_ventas if v.observaciones and 'Efectivo' in v.observaciones),
+        'Transferencia': sum(v.total for v in todas_las_ventas if v.observaciones and 'Transferencia' in v.observaciones),
+        'Debiendo': sum(v.total for v in todas_las_ventas if v.observaciones and 'Debiendo' in v.observaciones),
+        'En Proceso': sum(v.total for v in todas_las_ventas if v.observaciones and 'En Proceso' in v.observaciones),
+    }
+
+    return render_template(
+        'ventas.html',
+        ventas=ventas_filtradas,
+        totales=totales,
+        clientes=clientes,
+        productos=productos,
+        estado_filtro=estado_filtro
+    )
 
 
 # ---------------------------------------------------------
@@ -404,9 +432,15 @@ def balance():
 
     ventas_filtradas = query.order_by(Venta.fecha.desc()).all()
 
-    ingresos = sum(v.total for v in ventas_filtradas)
-    costos = sum(v.costo_total for v in ventas_filtradas)
-    ganancia = sum(v.ganancia for v in ventas_filtradas)
+    # Filtro exclusivo para dinero efectivamente cobrado
+    ventas_cobradas = [
+        v for v in ventas_filtradas 
+        if v.observaciones and ('Efectivo' in v.observaciones or 'Transferencia' in v.observaciones)
+    ]
+
+    ingresos = sum(v.total for v in ventas_cobradas)
+    costos = sum(v.costo_total for v in ventas_cobradas)
+    ganancia = sum(v.ganancia for v in ventas_cobradas)
 
     return render_template(
         'balance.html',
@@ -414,7 +448,7 @@ def balance():
         costos=costos,
         ganancia=ganancia,
         filtro_actual=filtro,
-        ventas=ventas_filtradas
+        ventas=ventas_cobradas
     )
 
 
@@ -502,6 +536,7 @@ def eliminar_venta(venta_id):
     db.session.commit()
     flash("Venta eliminada y stock devuelto correctamente.", "info")
     return redirect(url_for('ventas'))
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
