@@ -610,6 +610,11 @@ def editar_venta(venta_id):
 
     clientes = Cliente.query.all()
     return render_template('editar_venta.html', venta=venta, clientes=clientes)
+@app.route('/reset-db-secret-1234')
+def reset_db_produccion():
+    db.drop_all()
+    db.create_all()
+    return "Base de datos borrada y reiniciada con éxito en el servidor."
 
 
 if __name__ == '__main__':
