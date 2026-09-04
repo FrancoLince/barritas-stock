@@ -45,7 +45,7 @@ class Producto(db.Model):
     # Relaciones con borrado en cascada
     precios = db.relationship('PrecioProducto', backref='producto', cascade="all, delete-orphan", lazy=True)
     compras = db.relationship('Compra', backref='producto', cascade="all, delete-orphan", lazy=True)
-    ventas = db.relationship('Venta', backref='producto', cascade="all, delete-orphan", lazy=True)
+    detalles_venta = db.relationship('DetalleVenta', backref='producto', cascade="all, delete-orphan", lazy=True)
 
     @property
     def estado_stock(self):
@@ -97,14 +97,26 @@ class Compra(db.Model):
 
 class Venta(db.Model):
     __tablename__ = 'venta'
-
+    
     id = db.Column(db.Integer, primary_key=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    fecha = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    total = db.Column(db.Float, default=0.0, nullable=False)
+    costo_total = db.Column(db.Float, default=0.0, nullable=False)
+    ganancia = db.Column(db.Float, default=0.0, nullable=False)
+    observaciones = db.Column(db.Text, nullable=True)
+
+    # Relación con el detalle de la venta (carrito)
+    detalles = db.relationship('DetalleVenta', backref='venta', cascade="all, delete-orphan", lazy=True)
+
+
+class DetalleVenta(db.Model):
+    __tablename__ = 'detalle_venta'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    venta_id = db.Column(db.Integer, db.ForeignKey('venta.id'), nullable=False)
     producto_id = db.Column(db.Integer, db.ForeignKey('producto.id'), nullable=False)
     cantidad_cajas = db.Column(db.Integer, nullable=False)
     precio_por_caja = db.Column(db.Float, nullable=False)
-    total = db.Column(db.Float, nullable=False)
-    costo_total = db.Column(db.Float, nullable=False)
-    ganancia = db.Column(db.Float, nullable=False)
-    fecha = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    observaciones = db.Column(db.Text, nullable=True)
+    subtotal = db.Column(db.Float, nullable=False)
+    costo_subtotal = db.Column(db.Float, nullable=False)
