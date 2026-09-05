@@ -62,7 +62,7 @@
         {% for c in clientes %}
         <tr>
             <td><strong>{{ c.nombre }}</strong></td>
-            <td><span class="badge info">{{ c.tipo_rel.nombre }}</span></td>
+            <td><span class="badge info" style="color: #0f172a !important; font-weight: 600;">{{ c.tipo_rel.nombre }}</span></td>
             <td>{{ c.telefono or '-' }}</td>
             <td>{{ c.email or '-' }}</td>
             <td>{{ c.direccion or '-' }}</td>
