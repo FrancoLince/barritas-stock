@@ -24,13 +24,13 @@ def load_user(user_id):
     return db.session.get(User, int(user_id))
 
 
-# --- INICIALIZACIÓN DE DATOS (SEED) ---
+# --- INICIALIZACIÓN DE DATOS AL ARRANCAR (SEED) ---
 with app.app_context():
     tipos_defecto = ['Mayorista', 'Revendedor', 'Minorista', 'Distribuidoras grandes']
     for nombre in tipos_defecto:
         if not TipoCliente.query.filter_by(nombre=nombre).first():
             db.session.add(TipoCliente(nombre=nombre))
-    
+        
     usuarios_iniciales = [
         ("admin", "admin"),
         ("Emilia", "Barritas123"),
@@ -46,7 +46,7 @@ with app.app_context():
             db.session.add(nuevo_usuario)
         else:
             usuario.set_password(password)
-        
+            
     db.session.commit()
 
 
@@ -458,6 +458,8 @@ def ventas():
         productos=productos,
         estado_filtro=estado_filtro
     )
+
+
 # ---------------------------------------------------------
 # BALANCE Y HISTORIAL
 # ---------------------------------------------------------
@@ -635,19 +637,39 @@ def editar_venta(venta_id):
 
     clientes = Cliente.query.all()
     return render_template('editar_venta.html', venta=venta, clientes=clientes)
+
+
+# ---------------------------------------------------------
+# RUTA REINICIO TOTAL DE BASE DE DATOS Y USUARIOS
+# ---------------------------------------------------------
+
 @app.route('/reset-db-total-xyz')
 def reset_db_total():
     try:
         db.drop_all()
         db.create_all()
         
-        # Crear usuario admin inicial
-        admin = User(username='admin')
-        admin.set_password('admin')
-        db.session.add(admin)
+        # 1. Crear tipos de cliente por defecto
+        tipos_defecto = ['Mayorista', 'Revendedor', 'Minorista', 'Distribuidoras grandes']
+        for nombre in tipos_defecto:
+            db.session.add(TipoCliente(nombre=nombre))
+        
+        # 2. Crear todos los usuarios
+        usuarios_iniciales = [
+            ("admin", "admin"),
+            ("Emilia", "Barritas123"),
+            ("Analia", "Barritas123"),
+            ("Cati", "Barritas123")
+        ]
+
+        for username, password in usuarios_iniciales:
+            nuevo_usuario = User(username=username)
+            nuevo_usuario.set_password(password)
+            db.session.add(nuevo_usuario)
+            
         db.session.commit()
         
-        return "<h1 style='color: green;'>¡Base de datos recreada y usuario admin (pass: admin) creado con éxito!</h1>"
+        return "<h1 style='color: green;'>¡Base de datos recreada y todos los usuarios (admin, Emilia, Analia, Cati) creados con éxito!</h1>"
     except Exception as e:
         return f"<h1 style='color: red;'>Error al reiniciar la base de datos:</h1><p>{e}</p>"
 
