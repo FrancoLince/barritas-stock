@@ -354,6 +354,7 @@ def ventas():
             flash("Debe agregar al menos un producto a la venta.", "danger")
             return redirect(url_for('ventas'))
 
+        # Validar stock antes de crear
         for item in items:
             prod = db.session.get(Producto, item['producto_id'])
             if not prod or item['cantidad'] > prod.stock_cajas:
@@ -368,7 +369,9 @@ def ventas():
         nueva_venta = Venta(
             cliente_id=cliente_id,
             observaciones=observaciones,
-            total=0, costo_total=0, ganancia=0
+            total=0, costo_total=0, ganancia=0,
+            monto_efectivo=0.0,
+            monto_transferencia=0.0
         )
         db.session.add(nueva_venta)
         db.session.flush()
@@ -396,9 +399,32 @@ def ventas():
             costo_total_venta += costo_sub
             db.session.add(detalle)
 
+        # Asignar los montos de pago según el método elegido
         nueva_venta.total = total_venta
         nueva_venta.costo_total = costo_total_venta
         nueva_venta.ganancia = total_venta - costo_total_venta
+
+        if observaciones == 'Mixto':
+            monto_ef = float(request.form.get('monto_efectivo') or 0)
+            monto_tr = float(request.form.get('monto_transferencia') or 0)
+            
+            # Validación de seguridad backend
+            if abs((monto_ef + monto_tr) - total_venta) > 0.01:
+                db.session.rollback()
+                flash("Error: La suma de efectivo y transferencia no coincide con el total de la venta.", "danger")
+                return redirect(url_for('ventas'))
+
+            nueva_venta.monto_efectivo = monto_ef
+            nueva_venta.monto_transferencia = monto_tr
+        elif observaciones == 'Efectivo':
+            nueva_venta.monto_efectivo = total_venta
+            nueva_venta.monto_transferencia = 0.0
+        elif observaciones == 'Transferencia':
+            nueva_venta.monto_efectivo = 0.0
+            nueva_venta.monto_transferencia = total_venta
+        else:
+            nueva_venta.monto_efectivo = 0.0
+            nueva_venta.monto_transferencia = 0.0
 
         db.session.commit()
         flash('Venta registrada con éxito.', 'success')
@@ -416,9 +442,10 @@ def ventas():
     clientes = Cliente.query.all()
     productos = Producto.query.filter(Producto.stock_cajas > 0).all()
 
+    # Cálculo de los subtotales globales (incluyendo desgloses de pagos mixtos)
     totales = {
-        'Efectivo': sum(v.total for v in todas_las_ventas if v.observaciones and 'Efectivo' in v.observaciones),
-        'Transferencia': sum(v.total for v in todas_las_ventas if v.observaciones and 'Transferencia' in v.observaciones),
+        'Efectivo': sum((v.monto_efectivo or (v.total if v.observaciones == 'Efectivo' else 0)) for v in todas_las_ventas),
+        'Transferencia': sum((v.monto_transferencia or (v.total if v.observaciones == 'Transferencia' else 0)) for v in todas_las_ventas),
         'Debiendo': sum(v.total for v in todas_las_ventas if v.observaciones and 'Debiendo' in v.observaciones),
         'En Proceso': sum(v.total for v in todas_las_ventas if v.observaciones and 'En Proceso' in v.observaciones),
     }
@@ -431,8 +458,6 @@ def ventas():
         productos=productos,
         estado_filtro=estado_filtro
     )
-
-
 # ---------------------------------------------------------
 # BALANCE Y HISTORIAL
 # ---------------------------------------------------------
