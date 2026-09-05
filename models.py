@@ -105,10 +105,9 @@ class Venta(db.Model):
     costo_total = db.Column(db.Float, default=0.0, nullable=False)
     ganancia = db.Column(db.Float, default=0.0, nullable=False)
     observaciones = db.Column(db.Text, nullable=True)
-
-    # Relación con el detalle de la venta (carrito)
     detalles = db.relationship('DetalleVenta', backref='venta', cascade="all, delete-orphan", lazy=True)
-
+    monto_efectivo = db.Column(db.Float, default=0.0)
+    monto_transferencia = db.Column(db.Float, default=0.0)
 
 class DetalleVenta(db.Model):
     __tablename__ = 'detalle_venta'
