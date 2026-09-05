@@ -638,41 +638,5 @@ def editar_venta(venta_id):
     clientes = Cliente.query.all()
     return render_template('editar_venta.html', venta=venta, clientes=clientes)
 
-
-# ---------------------------------------------------------
-# RUTA REINICIO TOTAL DE BASE DE DATOS Y USUARIOS
-# ---------------------------------------------------------
-
-@app.route('/reset-db-total-xyz')
-def reset_db_total():
-    try:
-        db.drop_all()
-        db.create_all()
-        
-        # 1. Crear tipos de cliente por defecto
-        tipos_defecto = ['Mayorista', 'Revendedor', 'Minorista', 'Distribuidoras grandes']
-        for nombre in tipos_defecto:
-            db.session.add(TipoCliente(nombre=nombre))
-        
-        # 2. Crear todos los usuarios
-        usuarios_iniciales = [
-            ("admin", "admin"),
-            ("Emilia", "Barritas123"),
-            ("Analia", "Barritas123"),
-            ("Cati", "Barritas123")
-        ]
-
-        for username, password in usuarios_iniciales:
-            nuevo_usuario = User(username=username)
-            nuevo_usuario.set_password(password)
-            db.session.add(nuevo_usuario)
-            
-        db.session.commit()
-        
-        return "<h1 style='color: green;'>¡Base de datos recreada y todos los usuarios (admin, Emilia, Analia, Cati) creados con éxito!</h1>"
-    except Exception as e:
-        return f"<h1 style='color: red;'>Error al reiniciar la base de datos:</h1><p>{e}</p>"
-
-
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
