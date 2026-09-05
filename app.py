@@ -640,7 +640,14 @@ def reset_db_total():
     try:
         db.drop_all()
         db.create_all()
-        return "<h1 style='color: green;'>¡Base de datos recreada desde cero con éxito! Podés volver a la app.</h1>"
+        
+        # Crear usuario admin inicial
+        admin = User(username='admin')
+        admin.set_password('admin')
+        db.session.add(admin)
+        db.session.commit()
+        
+        return "<h1 style='color: green;'>¡Base de datos recreada y usuario admin (pass: admin) creado con éxito!</h1>"
     except Exception as e:
         return f"<h1 style='color: red;'>Error al reiniciar la base de datos:</h1><p>{e}</p>"
 
