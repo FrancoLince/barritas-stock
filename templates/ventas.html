@@ -22,12 +22,25 @@
                     </div>
                     <div class="col-md-6">
                         <label for="observaciones" class="form-label font-weight-bold">Estado / Método de Pago</label>
-                        <select name="observaciones" id="observaciones" class="form-select" required>
+                        <select name="observaciones" id="observaciones" class="form-select" onchange="togglePagoMixto()" required>
                             <option value="Efectivo">Efectivo</option>
                             <option value="Transferencia">Transferencia</option>
+                            <option value="Mixto">Mixto (Efectivo + Transferencia)</option>
                             <option value="Debiendo">Debiendo</option>
                             <option value="En Proceso">En Proceso</option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- CAMPOS PARA PAGO MIXTO (Ocultos por defecto) -->
+                <div class="row g-3 mb-3 d-none" id="bloquePagoMixto">
+                    <div class="col-md-6">
+                        <label for="monto_efectivo" class="form-label font-weight-bold text-success">Monto en Efectivo ($)</label>
+                        <input type="number" step="0.01" name="monto_efectivo" id="monto_efectivo" class="form-control" placeholder="0.00" value="0">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="monto_transferencia" class="form-label font-weight-bold text-primary">Monto en Transferencia ($)</label>
+                        <input type="number" step="0.01" name="monto_transferencia" id="monto_transferencia" class="form-control" placeholder="0.00" value="0">
                     </div>
                 </div>
 
@@ -97,7 +110,7 @@
         <div class="col-md-3">
             <div class="card border-success text-center shadow-sm">
                 <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Efectivo</h6>
+                    <h6 class="card-subtitle mb-2 text-muted">Efectivo Total</h6>
                     <h4 class="card-title text-success mb-0" id="montoEfectivo">$0.00</h4>
                 </div>
             </div>
@@ -105,7 +118,7 @@
         <div class="col-md-3">
             <div class="card border-primary text-center shadow-sm">
                 <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Transferencia</h6>
+                    <h6 class="card-subtitle mb-2 text-muted">Transferencia Total</h6>
                     <h4 class="card-title text-primary mb-0" id="montoTransferencia">$0.00</h4>
                 </div>
             </div>
@@ -139,6 +152,7 @@
                 <option value="todos">Todos</option>
                 <option value="Efectivo">Efectivo</option>
                 <option value="Transferencia">Transferencia</option>
+                <option value="Mixto">Mixto</option>
                 <option value="Debiendo">Debiendo</option>
                 <option value="En Proceso">En Proceso</option>
             </select>
@@ -159,7 +173,10 @@
             </thead>
             <tbody>
                 {% for v in ventas %}
-                <tr data-estado="{{ v.observaciones or '-' }}" data-total="{{ v.total }}">
+                <tr data-estado="{{ v.observaciones or '-' }}" 
+                    data-total="{{ v.total }}"
+                    data-efectivo="{{ v.monto_efectivo or (v.total if v.observaciones == 'Efectivo' else 0) }}"
+                    data-transferencia="{{ v.monto_transferencia or (v.total if v.observaciones == 'Transferencia' else 0) }}">
                     <td>{{ v.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
                     <td>{{ v.cliente.nombre }}</td>
                     <td>
@@ -170,7 +187,12 @@
                         </ul>
                     </td>
                     <td><strong>${{ "{:,.2f}".format(v.total) }}</strong></td>
-                    <td><span class="badge bg-info text-dark">{{ v.observaciones or '-' }}</span></td>
+                    <td>
+                        <span class="badge bg-info text-dark">{{ v.observaciones or '-' }}</span>
+                        {% if v.observaciones == 'Mixto' %}
+                            <br><small class="text-muted">(Ef: ${{ "{:,.2f}".format(v.monto_efectivo) }} | Tr: ${{ "{:,.2f}".format(v.monto_transferencia) }})</small>
+                        {% endif %}
+                    </td>
                     <td class="text-center">
                         <div class="d-flex justify-content-center gap-1">
                             <a href="{{ url_for('editar_venta', venta_id=v.id) }}" class="btn btn-sm btn-warning">Editar</a>
@@ -193,6 +215,7 @@
 <!-- JAVASCRIPT -->
 <script>
 let carrito = [];
+let totalVentaCalculado = 0;
 
 const clienteSelect = document.getElementById('cliente_id');
 const productoSelect = document.getElementById('producto_id');
@@ -203,7 +226,18 @@ const tablaBody = document.querySelector('#tablaCarrito tbody');
 const totalVentaElem = document.getElementById('totalVenta');
 const carritoJsonInput = document.getElementById('carrito_json');
 
-// 1. Obtener precio sugerido al cambiar cliente o producto
+// Mostrar/Ocultar campos de pago mixto
+function togglePagoMixto() {
+    const obsSelect = document.getElementById('observaciones').value;
+    const bloqueMixto = document.getElementById('bloquePagoMixto');
+    if (obsSelect === 'Mixto') {
+        bloqueMixto.classList.remove('d-none');
+    } else {
+        bloqueMixto.classList.add('d-none');
+    }
+}
+
+// Obtener precio sugerido
 function actualizarPrecioSugerido() {
     const clienteId = clienteSelect.value;
     const productoId = productoSelect.value;
@@ -223,7 +257,7 @@ function actualizarPrecioSugerido() {
 clienteSelect.addEventListener('change', actualizarPrecioSugerido);
 productoSelect.addEventListener('change', actualizarPrecioSugerido);
 
-// 2. Agregar ítem al carrito
+// Agregar ítem al carrito
 btnAgregar.addEventListener('click', () => {
     const productoId = productoSelect.value;
     const productoNombre = productoSelect.options[productoSelect.selectedIndex]?.text;
@@ -231,38 +265,25 @@ btnAgregar.addEventListener('click', () => {
     const precio = parseFloat(precioInput.value) || 0;
     const stockDisponible = parseInt(productoSelect.options[productoSelect.selectedIndex]?.getAttribute('data-stock')) || 0;
 
-    if (!productoId) {
-        alert("Selecciona un producto.");
-        return;
-    }
-    if (cantidad <= 0) {
-        alert("La cantidad debe ser mayor a 0.");
+    if (!productoId || cantidad <= 0 || precio <= 0) {
+        alert("Por favor completa los datos del producto correctamente.");
         return;
     }
     if (cantidad > stockDisponible) {
         alert(`Stock insuficiente. Solo hay ${stockDisponible} cajas disponibles.`);
         return;
     }
-    if (precio <= 0) {
-        alert("Ingresa un precio válido.");
-        return;
-    }
 
     const indexExistente = carrito.findIndex(item => item.producto_id === productoId);
     if (indexExistente !== -1) {
         if (carrito[indexExistente].cantidad + cantidad > stockDisponible) {
-            alert(`No podés agregar esa cantidad. Supera el stock disponible (${stockDisponible}).`);
+            alert(`Supera el stock disponible (${stockDisponible}).`);
             return;
         }
         carrito[indexExistente].cantidad += cantidad;
         carrito[indexExistente].precio = precio;
     } else {
-        carrito.push({
-            producto_id: productoId,
-            nombre: productoNombre,
-            cantidad: cantidad,
-            precio: precio
-        });
+        carrito.push({ producto_id: productoId, nombre: productoNombre, cantidad: cantidad, precio: precio });
     }
 
     renderizarCarrito();
@@ -271,14 +292,14 @@ btnAgregar.addEventListener('click', () => {
     precioInput.value = "";
 });
 
-// 3. Renderizar carrito
+// Renderizar carrito
 function renderizarCarrito() {
     tablaBody.innerHTML = "";
-    let total = 0;
+    totalVentaCalculado = 0;
 
     carrito.forEach((item, index) => {
         const subtotal = item.cantidad * item.precio;
-        total += subtotal;
+        totalVentaCalculado += subtotal;
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -291,25 +312,36 @@ function renderizarCarrito() {
         tablaBody.appendChild(tr);
     });
 
-    totalVentaElem.textContent = `$${total.toFixed(2)}`;
+    totalVentaElem.textContent = `$${totalVentaCalculado.toFixed(2)}`;
     carritoJsonInput.value = JSON.stringify(carrito);
 }
 
-// 4. Eliminar ítem
 function eliminarItem(index) {
     carrito.splice(index, 1);
     renderizarCarrito();
 }
 
-// 5. Validar antes de enviar
+// Validar formulario antes de enviar
 document.getElementById('formVenta').addEventListener('submit', (e) => {
     if (carrito.length === 0) {
         e.preventDefault();
-        alert("Agrega al menos un producto al carrito antes de registrar la venta.");
+        alert("Agrega al menos un producto al carrito.");
+        return;
+    }
+
+    const obs = document.getElementById('observaciones').value;
+    if (obs === 'Mixto') {
+        const ef = parseFloat(document.getElementById('monto_efectivo').value) || 0;
+        const tr = parseFloat(document.getElementById('monto_transferencia').value) || 0;
+        
+        if (Math.abs((ef + tr) - totalVentaCalculado) > 0.01) {
+            e.preventDefault();
+            alert(`La suma del efectivo ($${ef}) y transferencia ($${tr}) debe dar exactamente el total de la venta ($${totalVentaCalculado.toFixed(2)}).`);
+        }
     }
 });
 
-// 6. CALCULAR RESUMEN DE MONTOS Y FILTRAR TABLA
+// Calcular resumenes y filtrar
 function calcularTotalesYFiltrar() {
     const estadoSeleccionado = document.getElementById('filtroEstadoTabla').value;
     const filas = document.querySelectorAll('#tablaHistorialVentas tbody tr');
@@ -322,16 +354,19 @@ function calcularTotalesYFiltrar() {
     filas.forEach(fila => {
         const estadoFila = fila.getAttribute('data-estado');
         const totalFila = parseFloat(fila.getAttribute('data-total')) || 0;
+        const efFila = parseFloat(fila.getAttribute('data-efectivo')) || 0;
+        const trFila = parseFloat(fila.getAttribute('data-transferencia')) || 0;
 
         if (!estadoFila) return;
 
-        // Sumar montos globales
-        if (estadoFila === 'Efectivo') totalEfectivo += totalFila;
-        if (estadoFila === 'Transferencia') totalTransferencia += totalFila;
+        // Sumar montos según canal
+        totalEfectivo += efFila;
+        totalTransferencia += trFila;
+        
         if (estadoFila === 'Debiendo') totalDebiendo += totalFila;
         if (estadoFila === 'En Proceso') totalEnProceso += totalFila;
 
-        // Filtrar filas de la tabla
+        // Filtrar filas
         if (estadoSeleccionado === 'todos' || estadoFila === estadoSeleccionado) {
             fila.style.display = '';
         } else {
@@ -339,7 +374,6 @@ function calcularTotalesYFiltrar() {
         }
     });
 
-    // Actualizar cuadros de montos
     document.getElementById('montoEfectivo').textContent = `$${totalEfectivo.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     document.getElementById('montoTransferencia').textContent = `$${totalTransferencia.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     document.getElementById('montoDebiendo').textContent = `$${totalDebiendo.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
@@ -350,7 +384,6 @@ function filtrarTablaVentas() {
     calcularTotalesYFiltrar();
 }
 
-// Ejecutar calculo de totales al cargar la página
 document.addEventListener('DOMContentLoaded', () => {
     calcularTotalesYFiltrar();
 });
