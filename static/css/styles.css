@@ -1,3 +1,4 @@
+/* Reset general y tipografía */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -10,6 +11,7 @@ body {
     color: #333;
 }
 
+/* Layout Principal */
 .layout {
     display: flex;
     min-height: 100vh;
@@ -40,10 +42,15 @@ body {
     color: #cbd5e1;
     text-decoration: none;
     font-weight: 500;
+    display: block;
+    padding: 6px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s, color 0.2s;
 }
 
 .sidebar nav ul li a:hover {
     color: #ffffff;
+    background-color: #334155;
 }
 
 .content {
@@ -57,7 +64,18 @@ header {
     padding-bottom: 10px;
 }
 
-/* Form y Tarjetas */
+/* Pantalla de Login */
+.bg-login {
+    background-color: #f4f6f9;
+}
+
+.login-card {
+    max-width: 400px;
+    border: none;
+    border-radius: 12px;
+}
+
+/* Formularios y Tarjetas */
 .card-form {
     background: #ffffff;
     padding: 20px;
@@ -95,13 +113,15 @@ header {
     color: #475569;
 }
 
-.form-group input, .form-group select {
+.form-group input, 
+.form-group select {
     padding: 8px 12px;
     border: 1px solid #cbd5e1;
     border-radius: 4px;
     font-size: 0.95rem;
 }
 
+/* Botones */
 .btn {
     background-color: #0284c7;
     color: white;
@@ -110,10 +130,49 @@ header {
     border-radius: 4px;
     cursor: pointer;
     font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
 }
 
 .btn:hover {
     background-color: #0369a1;
+}
+
+.btn-save {
+    background-color: #16a34a;
+    color: #fff;
+}
+
+.btn-save:hover {
+    background-color: #15803d;
+}
+
+.btn-action-edit {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    background-color: #475569;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.btn-action-edit:hover {
+    background-color: #334155;
+}
+
+.btn-action-delete {
+    background-color: #dc2626;
+    color: #fff;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-action-delete:hover {
+    background-color: #b91c1c;
 }
 
 /* Tablas */
@@ -126,7 +185,8 @@ header {
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
-.table th, .table td {
+.table th, 
+.table td {
     padding: 12px 15px;
     text-align: left;
     border-bottom: 1px solid #e2e8f0;
@@ -155,69 +215,37 @@ header {
     font-weight: bold;
     color: #0f172a;
 }
-/* ==========================================
-   RESPONSIVE DESIGN (MÓVILES Y TABLETS)
-   ========================================== */
 
-/* Ajustes generales para contenedores */
-@media (max-width: 768px) {
-    /* Ajuste de márgenes y padding general */
-    body {
-        padding: 10px;
-    }
-
-    .container, .main-content {
-        padding: 10px;
-        width: 100%;
-    }
-
-    /* Grillas de formularios en una sola columna */
-    .form-grid {
-        display: grid;
-        grid-template-columns: 1fr !important;
-        gap: 12px;
-    }
-
-    .form-group[style*="grid-column"] {
-        grid-column: span 1 !important;
-    }
-
-    /* Tablas con desplazamiento horizontal suave */
-    .table-responsive, table {
-        display: block;
-        width: 100%;
-        overflow-x: auto;
-        white-space: nowrap;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    /* Ajuste de botones para celular */
-    .btn {
-        width: 100%;
-        padding: 12px;
-        font-size: 1rem;
-        text-align: center;
-    }
-
-    /* Ajuste de tarjetas o cards */
-    .card-form, .card {
-        padding: 15px;
-        margin-bottom: 20px;
-    }
+/* Utilidades adicionales requeridas por las plantillas */
+.mb-25 {
+    margin-bottom: 25px;
 }
 
-/* Ajustes para pantallas muy pequeñas (menos de 480px) */
-@media (max-width: 480px) {
-    h1 {
-        font-size: 1.5rem;
-    }
+.separator-margin {
+    margin: 30px 0;
+}
 
-    h3 {
-        font-size: 1.2rem;
-    }
+.max-w-320 {
+    max-width: 320px;
+}
 
-    table th, table td {
-        padding: 8px 10px;
-        font-size: 0.85rem;
-    }
+.inline-form {
+    display: inline;
+}
+
+.text-muted-custom {
+    color: #64748b;
+}
+
+.text-success-custom {
+    color: #16a34a;
+}
+
+.link-primary-custom {
+    color: #0284c7;
+    text-decoration: none;
+}
+
+.link-primary-custom:hover {
+    text-decoration: underline;
 }
