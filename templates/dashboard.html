@@ -1,66 +1,517 @@
 {% extends 'base.html' %}
 
-{% block content %}
-<header>
-    <h1>Dashboard Principal</h1>
-</header>
+{% block title %}
+Dashboard | Barritas ERP
+{% endblock %}
 
-<div class="form-grid mb-25">
-    <div class="card-form">
-        <small class="text-muted-custom">Stock Disponible</small>
-        <h2>{{ total_cajas_stock }} cajas</h2>
+{% block page_title %}
+Dashboard
+{% endblock %}
+
+{% block content %}
+
+<!-- =====================================================
+     BIENVENIDA
+     ===================================================== -->
+
+<div class="dashboard-header">
+
+    <div>
+
+        <span class="dashboard-kicker">
+            RESUMEN GENERAL
+        </span>
+
+        <h2>
+            ¡Bienvenido al panel de control! 👋
+        </h2>
+
+        <p>
+            Acá podés controlar el estado general de tu negocio.
+        </p>
+
     </div>
-    <div class="card-form">
-        <small class="text-muted-custom">Ventas Totales</small>
-        <h2>${{ "{:,.2f}".format(total_ventas_dinero) }}</h2>
+
+    <div class="dashboard-date">
+
+        <i class="bi bi-calendar3"></i>
+
+        <span>
+            Panel de gestión
+        </span>
+
     </div>
-    <div class="card-form">
-        <small class="text-muted-custom">Costos Totales</small>
-        <h2>${{ "{:,.2f}".format(total_costos) }}</h2>
-    </div>
-    <div class="card-form">
-        <small class="text-muted-custom">Ganancia Neta</small>
-        <h2 class="text-success-custom">${{ "{:,.2f}".format(total_ganancias) }}</h2>
-    </div>
-    <div class="card-form">
-        <small class="text-muted-custom">Clientes Registrados</small>
-        <h2>{{ cant_clientes }}</h2>
-    </div>
-    <div class="card-form">
-        <small class="text-muted-custom">Cajas Vendidas</small>
-        <h2>{{ total_cajas_vendidas }} cajas</h2>
-    </div>
+
 </div>
 
-<h3>Alertas de Stock</h3>
-<table class="table">
-    <thead>
-        <tr>
-            <th>Producto</th>
-            <th>Stock Actual</th>
-            <th>Stock Mínimo</th>
-            <th>Estado</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for prod in alertas_stock %}
-        <tr>
-            <td><strong>{{ prod.nombre }}</strong> ({{ prod.sabor }})</td>
-            <td>{{ prod.stock_cajas }} cajas</td>
-            <td>{{ prod.stock_minimo }} cajas</td>
-            <td>
-                {% if prod.stock_cajas <= 0 %}
-                    <span class="badge danger">🔴 AGOTADO</span>
-                {% else %}
-                    <span class="badge warning">⚠️ STOCK BAJO</span>
-                {% endif %}
-            </td>
-        </tr>
-        {% else %}
-        <tr>
-            <td colspan="4">No hay alertas de stock en este momento. Todos los productos tienen buen stock.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+
+<!-- =====================================================
+     TARJETAS PRINCIPALES
+     ===================================================== -->
+
+<div class="dashboard-grid">
+
+
+    <!-- STOCK -->
+
+    <div class="stat-card">
+
+        <div class="stat-card-top">
+
+            <div class="stat-icon blue">
+                <i class="bi bi-box-seam"></i>
+            </div>
+
+            <span class="stat-label">
+                STOCK DISPONIBLE
+            </span>
+
+        </div>
+
+        <div class="stat-value">
+            {{ total_cajas_stock | default(0) }}
+        </div>
+
+        <div class="stat-footer">
+            <i class="bi bi-box"></i>
+            cajas disponibles
+        </div>
+
+    </div>
+
+
+    <!-- VENTAS -->
+
+    <div class="stat-card">
+
+        <div class="stat-card-top">
+
+            <div class="stat-icon green">
+                <i class="bi bi-currency-dollar"></i>
+            </div>
+
+            <span class="stat-label">
+                VENTAS TOTALES
+            </span>
+
+        </div>
+
+        <div class="stat-value">
+            ${{ "{:,.2f}".format(total_ventas_dinero | default(0)) }}
+        </div>
+
+        <div class="stat-footer positive">
+            <i class="bi bi-graph-up-arrow"></i>
+            facturación acumulada
+        </div>
+
+    </div>
+
+
+    <!-- COSTOS -->
+
+    <div class="stat-card">
+
+        <div class="stat-card-top">
+
+            <div class="stat-icon orange">
+                <i class="bi bi-receipt"></i>
+            </div>
+
+            <span class="stat-label">
+                COSTOS TOTALES
+            </span>
+
+        </div>
+
+        <div class="stat-value">
+            ${{ "{:,.2f}".format(total_costos | default(0)) }}
+        </div>
+
+        <div class="stat-footer">
+            <i class="bi bi-arrow-down-circle"></i>
+            costos registrados
+        </div>
+
+    </div>
+
+
+    <!-- GANANCIA -->
+
+    <div class="stat-card highlight-card">
+
+        <div class="stat-card-top">
+
+            <div class="stat-icon purple">
+                <i class="bi bi-bar-chart-fill"></i>
+            </div>
+
+            <span class="stat-label">
+                GANANCIA NETA
+            </span>
+
+        </div>
+
+        <div class="stat-value green-text">
+            ${{ "{:,.2f}".format(total_ganancias | default(0)) }}
+        </div>
+
+        <div class="stat-footer positive">
+            <i class="bi bi-check-circle-fill"></i>
+            resultado acumulado
+        </div>
+
+    </div>
+
+
+</div>
+
+
+<!-- =====================================================
+     SEGUNDA FILA DE ESTADÍSTICAS
+     ===================================================== -->
+
+<div class="mini-stats-grid">
+
+    <div class="mini-stat-card">
+
+        <div class="mini-stat-icon">
+            <i class="bi bi-people-fill"></i>
+        </div>
+
+        <div>
+
+            <span>
+                CLIENTES
+            </span>
+
+            <strong>
+                {{ cant_clientes | default(0) }}
+            </strong>
+
+            <small>
+                registrados
+            </small>
+
+        </div>
+
+    </div>
+
+
+    <div class="mini-stat-card">
+
+        <div class="mini-stat-icon">
+            <i class="bi bi-cart-check-fill"></i>
+        </div>
+
+        <div>
+
+            <span>
+                CAJAS VENDIDAS
+            </span>
+
+            <strong>
+                {{ total_cajas_vendidas | default(0) }}
+            </strong>
+
+            <small>
+                unidades
+            </small>
+
+        </div>
+
+    </div>
+
+
+    <div class="mini-stat-card">
+
+        <div class="mini-stat-icon">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+        </div>
+
+        <div>
+
+            <span>
+                ALERTAS
+            </span>
+
+            <strong class="{% if alertas_stock and alertas_stock|length > 0 %}warning-text{% endif %}">
+                {{ alertas_stock|length if alertas_stock else 0 }}
+            </strong>
+
+            <small>
+                productos a revisar
+            </small>
+
+        </div>
+
+    </div>
+
+
+    <div class="mini-stat-card">
+
+        <div class="mini-stat-icon">
+            <i class="bi bi-clipboard-check-fill"></i>
+        </div>
+
+        <div>
+
+            <span>
+                ESTADO
+            </span>
+
+            <strong class="green-text">
+                OK
+            </strong>
+
+            <small>
+                sistema operativo
+            </small>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     ACCIONES RÁPIDAS
+     ===================================================== -->
+
+<div class="section-header">
+
+    <div>
+
+        <span class="section-kicker">
+            ACCESOS RÁPIDOS
+        </span>
+
+        <h3>
+            Operaciones frecuentes
+        </h3>
+
+    </div>
+
+</div>
+
+
+<div class="quick-actions">
+
+    <a
+        href="{{ url_for('ventas') }}"
+        class="quick-action"
+    >
+
+        <div class="quick-action-icon blue">
+            <i class="bi bi-cart-plus-fill"></i>
+        </div>
+
+        <div>
+            <strong>Nueva venta</strong>
+            <span>Registrar una venta</span>
+        </div>
+
+        <i class="bi bi-arrow-right"></i>
+
+    </a>
+
+
+    <a
+        href="{{ url_for('compras') }}"
+        class="quick-action"
+    >
+
+        <div class="quick-action-icon green">
+            <i class="bi bi-box-arrow-in-down"></i>
+        </div>
+
+        <div>
+            <strong>Ingresar stock</strong>
+            <span>Registrar una compra</span>
+        </div>
+
+        <i class="bi bi-arrow-right"></i>
+
+    </a>
+
+
+    <a
+        href="{{ url_for('productos') }}"
+        class="quick-action"
+    >
+
+        <div class="quick-action-icon purple">
+            <i class="bi bi-box-seam-fill"></i>
+        </div>
+
+        <div>
+            <strong>Productos</strong>
+            <span>Administrar productos</span>
+        </div>
+
+        <i class="bi bi-arrow-right"></i>
+
+    </a>
+
+
+    <a
+        href="{{ url_for('clientes') }}"
+        class="quick-action"
+    >
+
+        <div class="quick-action-icon orange">
+            <i class="bi bi-person-plus-fill"></i>
+        </div>
+
+        <div>
+            <strong>Clientes</strong>
+            <span>Gestionar clientes</span>
+        </div>
+
+        <i class="bi bi-arrow-right"></i>
+
+    </a>
+
+</div>
+
+
+<!-- =====================================================
+     ALERTAS DE STOCK
+     ===================================================== -->
+
+<div class="section-header stock-section-header">
+
+    <div>
+
+        <span class="section-kicker">
+            INVENTARIO
+        </span>
+
+        <h3>
+            Estado del stock
+        </h3>
+
+    </div>
+
+    <a
+        href="{{ url_for('stock') }}"
+        class="section-link"
+    >
+        Ver inventario
+        <i class="bi bi-arrow-right"></i>
+    </a>
+
+</div>
+
+
+<div class="erp-card">
+
+    {% if alertas_stock %}
+
+        <div class="stock-alert-list">
+
+            {% for prod in alertas_stock %}
+
+                <div class="stock-alert-item">
+
+                    <div class="stock-product">
+
+                        <div class="product-icon">
+                            <i class="bi bi-box"></i>
+                        </div>
+
+                        <div>
+
+                            <strong>
+                                {{ prod.nombre }}
+                            </strong>
+
+                            <span>
+                                {{ prod.marca }} · {{ prod.sabor }}
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="stock-numbers">
+
+                        <div>
+
+                            <span>
+                                Stock actual
+                            </span>
+
+                            <strong>
+                                {{ prod.stock_cajas }}
+                            </strong>
+
+                        </div>
+
+                        <div>
+
+                            <span>
+                                Mínimo
+                            </span>
+
+                            <strong>
+                                {{ prod.stock_minimo }}
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+                    <div>
+
+                        {% if prod.stock_cajas <= 0 %}
+
+                            <span class="status-badge danger">
+                                <i class="bi bi-x-circle-fill"></i>
+                                Agotado
+                            </span>
+
+                        {% else %}
+
+                            <span class="status-badge warning">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                Stock bajo
+                            </span>
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="empty-state">
+
+            <div class="empty-icon success">
+                <i class="bi bi-check-lg"></i>
+            </div>
+
+            <h4>
+                Todo en orden
+            </h4>
+
+            <p>
+                No hay productos con stock bajo en este momento.
+            </p>
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+
 {% endblock %}
