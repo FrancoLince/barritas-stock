@@ -5,29 +5,29 @@
     <h1>Dashboard Principal</h1>
 </header>
 
-<div class="form-grid" style="margin-bottom: 25px;">
+<div class="form-grid mb-25">
     <div class="card-form">
-        <small style="color: #64748b;">Stock Disponible</small>
+        <small class="text-muted-custom">Stock Disponible</small>
         <h2>{{ total_cajas_stock }} cajas</h2>
     </div>
     <div class="card-form">
-        <small style="color: #64748b;">Ventas Totales</small>
+        <small class="text-muted-custom">Ventas Totales</small>
         <h2>${{ "{:,.2f}".format(total_ventas_dinero) }}</h2>
     </div>
     <div class="card-form">
-        <small style="color: #64748b;">Costos Totales</small>
+        <small class="text-muted-custom">Costos Totales</small>
         <h2>${{ "{:,.2f}".format(total_costos) }}</h2>
     </div>
     <div class="card-form">
-        <small style="color: #64748b;">Ganancia Neta</small>
-        <h2 style="color: #16a34a;">${{ "{:,.2f}".format(total_ganancias) }}</h2>
+        <small class="text-muted-custom">Ganancia Neta</small>
+        <h2 class="text-success-custom">${{ "{:,.2f}".format(total_ganancias) }}</h2>
     </div>
     <div class="card-form">
-        <small style="color: #64748b;">Clientes Registrados</small>
+        <small class="text-muted-custom">Clientes Registrados</small>
         <h2>{{ cant_clientes }}</h2>
     </div>
     <div class="card-form">
-        <small style="color: #64748b;">Cajas Vendidas</small>
+        <small class="text-muted-custom">Cajas Vendidas</small>
         <h2>{{ total_cajas_vendidas }} cajas</h2>
     </div>
 </div>
