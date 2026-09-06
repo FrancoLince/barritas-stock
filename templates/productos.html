@@ -1,100 +1,107 @@
 {% extends 'base.html' %}
 
-{% block content %}
-<header>
-    <h1>Gestión de Productos</h1>
-</header>
+{% block title %}Productos | Barritas ERP{% endblock %}
+{% block page_title %}Gestión de Productos{% endblock %}
 
-<div class="card-form">
-    <h3>Nuevo Producto</h3>
+{% block content %}
+<div class="erp-card mb-4">
+    <div class="card-header-custom">
+        <h3>Nuevo Producto</h3>
+    </div>
+
     <form action="{{ url_for('productos') }}" method="POST">
         <div class="form-grid">
             <div class="form-group">
-                <label>Nombre:</label>
-                <input type="text" name="nombre" placeholder="Ej: Protein Chocolate" required>
+                <label for="nombre">Nombre:</label>
+                <input type="text" id="nombre" name="nombre" placeholder="Ej: Protein Chocolate" required>
             </div>
             <div class="form-group">
-                <label>Marca:</label>
-                <input type="text" name="marca" placeholder="Ej: Ena" required>
+                <label for="marca">Marca:</label>
+                <input type="text" id="marca" name="marca" placeholder="Ej: Ena" required>
             </div>
             <div class="form-group">
-                <label>Sabor:</label>
-                <input type="text" name="sabor" placeholder="Ej: Chocolate" required>
+                <label for="sabor">Sabor:</label>
+                <input type="text" id="sabor" name="sabor" placeholder="Ej: Chocolate" required>
             </div>
             <div class="form-group">
-                <label>Barritas por caja (Info):</label>
-                <input type="number" name="contenido_caja" value="12" required>
+                <label for="contenido_caja">Barritas por caja (Info):</label>
+                <input type="number" id="contenido_caja" name="contenido_caja" value="12" required>
             </div>
             <div class="form-group">
-                <label>Stock Inicial (Cajas):</label>
-                <input type="number" name="stock_cajas" value="0" min="0" required>
+                <label for="stock_cajas">Stock Inicial (Cajas):</label>
+                <input type="number" id="stock_cajas" name="stock_cajas" value="0" min="0" required>
             </div>
             <div class="form-group">
-                <label>Stock Mínimo (Cajas):</label>
-                <input type="number" name="stock_minimo" value="0" min="0" required>
+                <label for="stock_minimo">Stock Mínimo (Cajas):</label>
+                <input type="number" id="stock_minimo" name="stock_minimo" value="0" min="0" required>
             </div>
             <div class="form-group">
-                <label>Costo de compra por caja ($):</label>
-                <input type="number" step="0.01" name="costo_caja" placeholder="7000" required>
+                <label for="costo_caja">Costo de compra por caja ($):</label>
+                <input type="number" id="costo_caja" step="0.01" name="costo_caja" placeholder="7000" required>
             </div>
         </div>
 
-        <h4>Precios de Venta por Caja según Tipo de Cliente</h4>
+        <h4 class="mt-4 mb-3">Precios de Venta por Caja según Tipo de Cliente</h4>
         <div class="form-grid">
             {% for tipo in tipos_cliente %}
             <div class="form-group">
-                <label>Precio {{ tipo.nombre }} ($):</label>
-                <input type="number" step="0.01" name="precio_tipo_{{ tipo.id }}" placeholder="0.00" required>
+                <label for="precio_tipo_{{ tipo.id }}">Precio {{ tipo.nombre }} ($):</label>
+                <input type="number" id="precio_tipo_{{ tipo.id }}" step="0.01" name="precio_tipo_{{ tipo.id }}" placeholder="0.00" required>
             </div>
             {% endfor %}
         </div>
 
-        <button type="submit" class="btn">Guardar Producto</button>
+        <button type="submit" class="btn btn-primary mt-3">Guardar Producto</button>
     </form>
 </div>
 
-<hr class="separator-margin">
+<div class="erp-card">
+    <div class="card-header-custom">
+        <h3>Listado de Productos</h3>
+    </div>
 
-<h3>Listado de Productos</h3>
-<table class="table">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Producto</th>
-            <th>Marca / Sabor</th>
-            <th>Stock Actual</th>
-            <th>Costo / Caja</th>
-            <th>Precios por Tipo</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for prod in productos %}
-        <tr>
-            <td>{{ prod.id }}</td>
-            <td><strong>{{ prod.nombre }}</strong></td>
-            <td>{{ prod.marca }} - {{ prod.sabor }}</td>
-            <td><strong>{{ prod.stock_cajas }} cajas</strong></td>
-            <td>${{ "{:,.2f}".format(prod.costo_caja) }}</td>
-            <td>
-                {% for p in prod.precios %}
-                    <small><strong>{{ p.tipo_rel.nombre }}:</strong> ${{ "{:,.2f}".format(p.precio_caja) }}</small><br>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Producto</th>
+                    <th>Marca / Sabor</th>
+                    <th>Stock Actual</th>
+                    <th>Costo / Caja</th>
+                    <th>Precios por Tipo</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for prod in productos %}
+                <tr>
+                    <td>{{ prod.id }}</td>
+                    <td><strong>{{ prod.nombre }}</strong></td>
+                    <td>{{ prod.marca }} - {{ prod.sabor }}</td>
+                    <td><strong>{{ prod.stock_cajas }} cajas</strong></td>
+                    <td>${{ "{:,.2f}".format(prod.costo_caja | default(0)) }}</td>
+                    <td>
+                        {% for p in prod.precios %}
+                            <small><strong>{{ p.tipo_rel.nombre }}:</strong> ${{ "{:,.2f}".format(p.precio_caja | default(0)) }}</small><br>
+                        {% endfor %}
+                    </td>
+                    <td class="text-end">
+                        <div class="d-inline-flex gap-1">
+                            <a href="{{ url_for('editar_producto', producto_id=prod.id) }}" class="btn btn-sm btn-outline-warning">✏️ Editar</a>
+                            <form action="{{ url_for('eliminar_producto', producto_id=prod.id) }}" method="POST" class="d-inline" data-confirm="¿Seguro que deseas eliminar este producto?">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ Eliminar</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted">No hay productos registrados aún.</td>
+                </tr>
                 {% endfor %}
-            </td>
-            <td>
-                <a href="{{ url_for('editar_producto', producto_id=prod.id) }}" class="btn btn-action-edit">✏️ Editar</a>
-            </td>
-            <td>
-                <form action="{{ url_for('eliminar_producto', producto_id=prod.id) }}" method="POST" class="inline-form" onsubmit="return confirm('¿Seguro que deseas eliminar este producto?');">
-                    <button type="submit" class="btn btn-action-delete">🗑️ Eliminar</button>
-                </form>
-            </td>
-        </tr>
-        {% else %}
-        <tr>
-            <td colspan="7">No hay productos registrados aún.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}
