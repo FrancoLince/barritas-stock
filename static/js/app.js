@@ -1,31 +1,39 @@
+// Variables de estado global del carrito
 let carrito = [];
 let totalVentaCalculado = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Referencias a elementos del DOM
+    // ----------------------------------------------------
+    // 1. REFERENCIAS A ELEMENTOS DEL DOM
+    // ----------------------------------------------------
     const selectCliente = document.getElementById('cliente_id');
     const selectProducto = document.getElementById('producto_id');
     const inputCantidad = document.getElementById('cantidad_cajas');
     const inputPrecio = document.getElementById('precio_por_caja');
-    const inputTotal = document.getElementById('total_calculado');
     const infoStock = document.getElementById('info-stock');
     
     const formVenta = document.getElementById('formVenta');
     const btnAgregar = document.getElementById('btnAgregarItem');
     const observacionesSelect = document.getElementById('observaciones');
     const filtroEstadoTabla = document.getElementById('filtroEstadoTabla');
+    
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const tablaCarrito = document.getElementById('tablaCarrito');
 
-    // --- LÓGICA DE OBTENCIÓN DE PRECIO Y CÁLCULOS ---
+    // ----------------------------------------------------
+    // 2. LÓGICA DE PRECIOS Y STOCK DESDE API
+    // ----------------------------------------------------
     function actualizarTotalesYPrecios() {
-        const clienteId = selectCliente ? selectCliente.value : null;
-        const productoId = selectProducto ? selectProducto.value : null;
+        const clienteId = selectCliente?.value;
+        const productoId = selectProducto?.value;
 
         if (clienteId && productoId) {
             fetch(`/api/obtener-precio?cliente_id=${clienteId}&producto_id=${productoId}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.precio_sugerido !== undefined) {
-                        // Solo actualiza el precio si no ha sido modificado manualmente
                         if (inputPrecio && !inputPrecio.dataset.userModified) {
                             inputPrecio.value = data.precio_sugerido;
                         }
@@ -35,23 +43,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (inputCantidad && data.stock_disponible !== undefined) {
                             inputCantidad.max = data.stock_disponible;
                         }
-                        calcularTotal();
                     }
                 })
                 .catch(err => console.error('Error al obtener precio:', err));
         }
     }
 
-    function calcularTotal() {
-        if (inputCantidad && inputPrecio && inputTotal) {
-            const cantidad = parseFloat(inputCantidad.value) || 0;
-            const precio = parseFloat(inputPrecio.value) || 0;
-            const total = cantidad * precio;
-            inputTotal.value = `$ ${total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        }
-    }
-
-    // Event Listeners para Precios y Cantidades
+    // ----------------------------------------------------
+    // 3. LISTENERS PARA EVENTOS DE FORMULARIO
+    // ----------------------------------------------------
     if (selectCliente && selectProducto) {
         selectCliente.addEventListener('change', () => {
             if (inputPrecio) delete inputPrecio.dataset.userModified;
@@ -67,15 +67,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (inputPrecio) {
         inputPrecio.addEventListener('input', () => {
             inputPrecio.dataset.userModified = 'true';
-            calcularTotal();
         });
     }
 
-    if (inputCantidad) {
-        inputCantidad.addEventListener('input', calcularTotal);
-    }
-
-    // --- LÓGICA DE VENTAS Y CARRITO MULTIPRODUCTO ---
     if (observacionesSelect) {
         observacionesSelect.addEventListener('change', togglePagoMixto);
     }
@@ -95,22 +89,60 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('tablaHistorialVentas')) {
         calcularTotalesYFiltrar();
     }
+
+    // Delegación de eventos para eliminar ítems del carrito (sin onclick inline)
+    if (tablaCarrito) {
+        tablaCarrito.addEventListener('click', (e) => {
+            const btnEliminar = e.target.closest('.btn-eliminar-item');
+            if (btnEliminar) {
+                const index = parseInt(btnEliminar.getAttribute('data-index'));
+                eliminarItemCarrito(index);
+            }
+        });
+    }
+
+    // ----------------------------------------------------
+    // 4. INTERFAZ UI / SIDEBAR / ALERTAS
+    // ----------------------------------------------------
+    const toggleSidebar = () => {
+        if (sidebar) sidebar.classList.toggle('sidebar-open');
+        if (overlay) overlay.classList.toggle('active');
+    };
+
+    if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleSidebar);
+    if (overlay) overlay.addEventListener('click', toggleSidebar);
+
+    // Cierre de alertas sin usar onclick inline
+    document.querySelectorAll('.custom-alert .btn-close-custom').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.target.closest('.custom-alert')?.remove();
+        });
+    });
+
+    // Confirmación global de formularios con atributo data-confirm
+    document.addEventListener('submit', (e) => {
+        const form = e.target;
+        if (form.hasAttribute('data-confirm')) {
+            const message = form.getAttribute('data-confirm') || '¿Confirmas realizar esta acción?';
+            if (!confirm(message)) {
+                e.preventDefault();
+            }
+        }
+    });
 });
 
-// Mostrar/Ocultar campos de pago mixto
+// ----------------------------------------------------
+// 5. FUNCIONES AUXILIARES DEL CARRITO Y VENTAS
+// ----------------------------------------------------
+
 function togglePagoMixto() {
     const obsSelect = document.getElementById('observaciones')?.value;
     const bloqueMixto = document.getElementById('bloquePagoMixto');
     if (bloqueMixto) {
-        if (obsSelect === 'Mixto') {
-            bloqueMixto.classList.remove('d-none');
-        } else {
-            bloqueMixto.classList.add('d-none');
-        }
+        bloqueMixto.classList.toggle('d-none', obsSelect !== 'Mixto');
     }
 }
 
-// Agregar ítem al carrito de compras
 function agregarItemAlCarrito() {
     const productoSelect = document.getElementById('producto_id');
     const cantidadInput = document.getElementById('cantidad_cajas');
@@ -123,7 +155,6 @@ function agregarItemAlCarrito() {
     const cantidad = parseInt(cantidadInput.value) || 0;
     const precio = parseFloat(precioInput.value) || 0;
     
-    // Obtener limite maximo configurado o del atributo data-stock
     const maxStockAttr = productoSelect.options[productoSelect.selectedIndex]?.getAttribute('data-stock');
     const stockDisponible = cantidadInput.max ? parseInt(cantidadInput.max) : (maxStockAttr ? parseInt(maxStockAttr) : Infinity);
 
@@ -158,7 +189,6 @@ function agregarItemAlCarrito() {
     if (infoStock) infoStock.textContent = "";
 }
 
-// Renderizar tabla del carrito
 function renderizarCarrito() {
     const tablaBody = document.querySelector('#tablaCarrito tbody');
     const totalVentaElem = document.getElementById('totalVenta');
@@ -179,7 +209,9 @@ function renderizarCarrito() {
             <td>${item.cantidad}</td>
             <td>$${item.precio.toFixed(2)}</td>
             <td>$${subtotal.toFixed(2)}</td>
-            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarItem(${index})">❌</button></td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-item" data-index="${index}">❌</button>
+            </td>
         `;
         tablaBody.appendChild(tr);
     });
@@ -188,12 +220,11 @@ function renderizarCarrito() {
     if (carritoJsonInput) carritoJsonInput.value = JSON.stringify(carrito);
 }
 
-function eliminarItem(index) {
+function eliminarItemCarrito(index) {
     carrito.splice(index, 1);
     renderizarCarrito();
 }
 
-// Validar formulario de venta antes del submit
 function validarFormularioVenta(e) {
     if (carrito.length === 0) {
         e.preventDefault();
@@ -213,7 +244,6 @@ function validarFormularioVenta(e) {
     }
 }
 
-// Calcular resúmenes y aplicar filtro en historial
 function calcularTotalesYFiltrar() {
     const filtroElem = document.getElementById('filtroEstadoTabla');
     if (!filtroElem) return;
@@ -240,11 +270,7 @@ function calcularTotalesYFiltrar() {
         if (estadoFila === 'Debiendo') totalDebiendo += totalFila;
         if (estadoFila === 'En Proceso') totalEnProceso += totalFila;
 
-        if (estadoSeleccionado === 'todos' || estadoFila === estadoSeleccionado) {
-            fila.style.display = '';
-        } else {
-            fila.style.display = 'none';
-        }
+        fila.style.display = (estadoSeleccionado === 'todos' || estadoFila === estadoSeleccionado) ? '' : 'none';
     });
 
     const elemEf = document.getElementById('montoEfectivo');
