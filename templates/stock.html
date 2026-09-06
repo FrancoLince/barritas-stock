@@ -1,55 +1,62 @@
 {% extends 'base.html' %}
 
-{% block content %}
-<header>
-    <h1>Control de Stock por Cajas</h1>
-</header>
+{% block title %}Stock | Barritas ERP{% endblock %}
+{% block page_title %}Control de Stock por Cajas{% endblock %}
 
-<table class="table">
-    <thead>
-        <tr>
-            <th>Producto</th>
-            <th>Stock (Cajas)</th>
-            <th>Estado</th>
-            <th>Costo / Caja</th>
-            {% for tipo in tipos_cliente %}
-                <th>Precio {{ tipo.nombre }}</th>
-            {% endfor %}
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for prod in productos %}
-        <tr>
-            <td><strong>{{ prod.nombre }}</strong> ({{ prod.sabor }})</td>
-            <td><span class="stock-badge">{{ prod.stock_cajas }} cajas</span></td>
-            <td>
-                {% if prod.estado_stock == 'AGOTADO' %}
-                    <span class="badge danger">🔴 AGOTADO</span>
-                {% elif prod.estado_stock == 'STOCK BAJO' %}
-                    <span class="badge warning">⚠️ STOCK BAJO</span>
+{% block content %}
+<div class="erp-card">
+    <div class="card-header-custom">
+        <h3>Inventario de Productos</h3>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Stock (Cajas)</th>
+                    <th>Estado</th>
+                    <th>Costo / Caja</th>
+                    {% for tipo in tipos_cliente %}
+                        <th>Precio {{ tipo.nombre }}</th>
+                    {% endfor %}
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for prod in productos %}
+                <tr>
+                    <td><strong>{{ prod.nombre }}</strong> ({{ prod.sabor }})</td>
+                    <td><span class="stock-badge">{{ prod.stock_cajas | default(0) }} cajas</span></td>
+                    <td>
+                        {% if prod.estado_stock == 'AGOTADO' %}
+                            <span class="status-badge danger">🔴 AGOTADO</span>
+                        {% elif prod.estado_stock == 'STOCK BAJO' %}
+                            <span class="status-badge warning">⚠️ STOCK BAJO</span>
+                        {% else %}
+                            <span class="status-badge success">🟢 OK</span>
+                        {% endif %}
+                    </td>
+                    <td>${{ "{:,.2f}".format(prod.costo_caja | default(0)) }}</td>
+                    {% for tipo in tipos_cliente %}
+                        <td>${{ "{:,.2f}".format(precios[prod.id].get(tipo.nombre, 0.0) | default(0)) }}</td>
+                    {% endfor %}
+                    <td class="text-end">
+                        <div class="d-inline-flex gap-1">
+                            <a href="{{ url_for('editar_producto', producto_id=prod.id) }}" class="btn btn-sm btn-outline-warning">✏️ Ajustar</a>
+                            <form action="{{ url_for('eliminar_producto', producto_id=prod.id) }}" method="POST" class="d-inline" data-confirm="¿Seguro que deseas eliminar este producto?">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ Eliminar</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
                 {% else %}
-                    <span class="badge success">🟢 OK</span>
-                {% endif %}
-            </td>
-            <td>${{ "{:,.2f}".format(prod.costo_caja) }}</td>
-            {% for tipo in tipos_cliente %}
-                <td>${{ "{:,.2f}".format(precios[prod.id].get(tipo.nombre, 0.0)) }}</td>
-            {% endfor %}
-            <td>
-                <a href="{{ url_for('editar_producto', producto_id=prod.id) }}" class="btn btn-action-edit">✏️ Ajustar</a>
-            </td>
-            <td>
-                <form action="{{ url_for('eliminar_producto', producto_id=prod.id) }}" method="POST" class="inline-form" onsubmit="return confirm('¿Seguro que deseas eliminar este producto?');">
-                    <button type="submit" class="btn btn-action-delete">🗑️ Eliminar</button>
-                </form>
-            </td>
-        </tr>
-        {% else %}
-        <tr>
-            <td colspan="{{ 5 + tipos_cliente|length }}">No hay productos registrados.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+                <tr>
+                    <td colspan="{{ 5 + tipos_cliente|length }}" class="text-center text-muted">No hay productos registrados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}
