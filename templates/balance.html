@@ -1,47 +1,44 @@
 {% extends 'base.html' %}
 
+{% block title %}Balance | Barritas ERP{% endblock %}
+{% block page_title %}Balance y Rendimiento{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <h2>Balance y Rendimiento</h2>
+<!-- Filtros de Período -->
+<div class="balance-filters">
+    <a href="{{ url_for('balance', filtro='hoy') }}" class="btn-filter {% if filtro_actual == 'hoy' %}active{% endif %}">Hoy</a>
+    <a href="{{ url_for('balance', filtro='semana') }}" class="btn-filter {% if filtro_actual == 'semana' %}active{% endif %}">Esta Semana</a>
+    <a href="{{ url_for('balance', filtro='mes') }}" class="btn-filter {% if filtro_actual == 'mes' %}active{% endif %}">Este Mes</a>
+    <a href="{{ url_for('balance', filtro='anio') }}" class="btn-filter {% if filtro_actual == 'anio' %}active{% endif %}">Este Año</a>
+</div>
 
-    <div class="btn-group mb-4" role="group">
-        <a href="{{ url_for('balance', filtro='hoy') }}" class="btn btn-outline-primary {% if filtro_actual == 'hoy' %}active{% endif %}">Hoy</a>
-        <a href="{{ url_for('balance', filtro='semana') }}" class="btn btn-outline-primary {% if filtro_actual == 'semana' %}active{% endif %}">Esta Semana</a>
-        <a href="{{ url_for('balance', filtro='mes') }}" class="btn btn-outline-primary {% if filtro_actual == 'mes' %}active{% endif %}">Este Mes</a>
-        <a href="{{ url_for('balance', filtro='anio') }}" class="btn btn-outline-primary {% if filtro_actual == 'anio' %}active{% endif %}">Este Año</a>
+<!-- Tarjetas Principales del Balance -->
+<div class="balance-grid">
+    <div class="balance-card ingresos">
+        <span class="balance-card-title">Ingresos Totales</span>
+        <div class="balance-card-value">${{ "{:,.2f}".format(ingresos | default(0)) }}</div>
+    </div>
+    
+    <div class="balance-card costos">
+        <span class="balance-card-title">Costos Totales</span>
+        <div class="balance-card-value">${{ "{:,.2f}".format(costos | default(0)) }}</div>
+    </div>
+    
+    <div class="balance-card ganancia">
+        <span class="balance-card-title">Ganancia Neta</span>
+        <div class="balance-card-value">${{ "{:,.2f}".format(ganancia | default(0)) }}</div>
+    </div>
+</div>
+
+<!-- Contenedor Tabla de Ventas -->
+<div class="erp-card p-4">
+    <div class="section-header mb-3">
+        <h3>Ventas del Período</h3>
     </div>
 
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card text-white bg-success shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">Ingresos Totales</h5>
-                    <h3 class="card-text">${{ "{:,.2f}".format(ingresos) }}</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card text-white bg-secondary shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">Costos Totales</h5>
-                    <h3 class="card-text">${{ "{:,.2f}".format(costos) }}</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card text-white bg-primary shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">Ganancia Neta</h5>
-                    <h3 class="card-text">${{ "{:,.2f}".format(ganancia) }}</h3>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <h3>Ventas del Período</h3>
-    <div class="table-responsive">
-        <table class="table table-striped table-hover align-middle">
-            <thead class="table-dark">
+    <div class="table-container">
+        <table class="table">
+            <thead>
                 <tr>
                     <th>Fecha</th>
                     <th>Cliente</th>
@@ -55,8 +52,8 @@
             <tbody>
                 {% for v in ventas %}
                 <tr>
-                    <td>{{ v.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
-                    <td>{{ v.cliente.nombre }}</td>
+                    <td>{{ v.fecha.strftime('%d/%m/%Y %H:%M') if v.fecha else '-' }}</td>
+                    <td><strong>{{ v.cliente.nombre }}</strong></td>
                     <td>
                         <ul class="mb-0 ps-3">
                             {% for d in v.detalles %}
@@ -64,14 +61,20 @@
                             {% endfor %}
                         </ul>
                     </td>
-                    <td><strong>${{ "{:,.2f}".format(v.total) }}</strong></td>
-                    <td class="text-secondary">${{ "{:,.2f}".format(v.costo_total) }}</td>
-                    <td class="text-success"><strong>${{ "{:,.2f}".format(v.ganancia) }}</strong></td>
-                    <td><span class="badge bg-info text-dark">{{ v.observaciones or '-' }}</span></td>
+                    <td><strong>${{ "{:,.2f}".format(v.total | default(0)) }}</strong></td>
+                    <td class="text-muted-custom">${{ "{:,.2f}".format(v.costo_total | default(0)) }}</td>
+                    <td class="text-success-custom"><strong>${{ "{:,.2f}".format(v.ganancia | default(0)) }}</strong></td>
+                    <td><span class="badge info">{{ v.observaciones or '-' }}</span></td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="7" class="text-center text-muted">No hay ventas cobradas registradas para este período.</td>
+                    <td colspan="7" class="empty-state">
+                        <div class="empty-icon success">
+                            <i class="bi bi-receipt"></i>
+                        </div>
+                        <h4>Sin ventas registradas</h4>
+                        <p>No hay ventas cobradas para el período seleccionado.</p>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
