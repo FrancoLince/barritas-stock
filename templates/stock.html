@@ -37,11 +37,11 @@
                 <td>${{ "{:,.2f}".format(precios[prod.id].get(tipo.nombre, 0.0)) }}</td>
             {% endfor %}
             <td>
-                <a href="{{ url_for('editar_producto', producto_id=prod.id) }}" class="btn" style="padding: 4px 8px; font-size: 0.8rem; background-color: #475569; text-decoration: none;">✏️ Ajustar</a>
-            </tr>
+                <a href="{{ url_for('editar_producto', producto_id=prod.id) }}" class="btn btn-action-edit">✏️ Ajustar</a>
+            </td>
             <td>
-                <form action="{{ url_for('eliminar_producto', producto_id=prod.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Seguro que deseas eliminar este producto?');">
-                    <button type="submit" class="btn" style="background-color: #dc2626; padding: 4px 8px; font-size: 0.8rem;">🗑️ Eliminar</button>
+                <form action="{{ url_for('eliminar_producto', producto_id=prod.id) }}" method="POST" class="inline-form" onsubmit="return confirm('¿Seguro que deseas eliminar este producto?');">
+                    <button type="submit" class="btn btn-action-delete">🗑️ Eliminar</button>
                 </form>
             </td>
         </tr>
