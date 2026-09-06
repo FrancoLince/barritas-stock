@@ -3,7 +3,7 @@
 {% block content %}
 <header>
     <h1>Editar Producto: {{ producto.nombre }}</h1>
-    <p><a href="{{ url_for('productos') }}" style="color: #0284c7; text-decoration: none;">← Volver a Productos</a></p>
+    <p><a href="{{ url_for('productos') }}" class="link-primary-custom">← Volver a Productos</a></p>
 </header>
 
 <div class="card-form">
@@ -49,7 +49,8 @@
             {% endfor %}
         </div>
 
-        <button type="submit" class="btn" style="background-color: #16a34a;">Guardar Cambios</button>
+        <button type="submit" class="btn btn-save">Guardar Cambios</button>
     </form>
 </div>
+{% endblock %}
 {% endblock %}
