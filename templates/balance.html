@@ -4,7 +4,6 @@
 <div class="container mt-4">
     <h2>Balance y Rendimiento</h2>
 
-    <!-- FILTROS DE TIEMPO -->
     <div class="btn-group mb-4" role="group">
         <a href="{{ url_for('balance', filtro='hoy') }}" class="btn btn-outline-primary {% if filtro_actual == 'hoy' %}active{% endif %}">Hoy</a>
         <a href="{{ url_for('balance', filtro='semana') }}" class="btn btn-outline-primary {% if filtro_actual == 'semana' %}active{% endif %}">Esta Semana</a>
@@ -12,7 +11,6 @@
         <a href="{{ url_for('balance', filtro='anio') }}" class="btn btn-outline-primary {% if filtro_actual == 'anio' %}active{% endif %}">Este Año</a>
     </div>
 
-    <!-- TARJETAS DE MÉTRICAS -->
     <div class="row mb-4">
         <div class="col-md-4">
             <div class="card text-white bg-success shadow-sm">
@@ -40,7 +38,6 @@
         </div>
     </div>
 
-    <!-- TABLA DE VENTAS DEL PERÍODO -->
     <h3>Ventas del Período</h3>
     <div class="table-responsive">
         <table class="table table-striped table-hover align-middle">
