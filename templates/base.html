@@ -1,40 +1,238 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Barritas</title>
-    
-    <!-- BOOTSTRAP 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- CSS Unificado -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-</head>
-<body>
-    <div class="layout">
-        <aside class="sidebar">
-            <h2>BarritasApp</h2>
-            <nav>
-                <ul>
-                    <li><a href="{{ url_for('index') }}">Dashboard</a></li>
-                    <li><a href="{{ url_for('productos') }}">Productos</a></li>
-                    <li><a href="{{ url_for('stock') }}">Stock</a></li>
-                    <li><a href="{{ url_for('compras') }}">Compras</a></li>
-                    <li><a href="{{ url_for('clientes') }}">Clientes</a></li>
-                    <li><a href="{{ url_for('ventas') }}">Ventas</a></li>
-                    <li><a href="{{ url_for('balance') }}">Balance</a></li>
-                    <li><a href="{{ url_for('historial') }}">Historial</a></li>
-                </ul>
-            </nav>
-        </aside>
-        <main class="content">
-            {% block content %}{% endblock %}
-        </main>
-    </div>
 
-    <!-- BOOTSTRAP JS Y JS UNIFICADO -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <title>{% block title %}Barritas ERP{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link 
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" 
+        rel="stylesheet"
+    >
+
+    <!-- Iconos Bootstrap -->
+    <link 
+        rel="stylesheet" 
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    >
+
+    <!-- CSS propio -->
+    <link 
+        rel="stylesheet" 
+        href="{{ url_for('static', filename='css/styles.css') }}"
+    >
+</head>
+
+<body>
+
+<div class="erp-layout">
+
+    <!-- Overlay para el sidebar en móviles -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- =====================================================
+         SIDEBAR
+         ===================================================== -->
+
+    <aside class="sidebar" id="sidebar">
+
+        <!-- Logo -->
+        <div class="sidebar-brand">
+            <div class="brand-icon">
+                <i class="bi bi-box-seam"></i>
+            </div>
+            <div>
+                <h2>Barritas</h2>
+                <span>ERP</span>
+            </div>
+        </div>
+
+        <!-- Navegación -->
+        <nav class="sidebar-nav">
+
+            <!-- INICIO -->
+            <div class="nav-section">
+                <span class="nav-section-title">INICIO</span>
+                <a 
+                    href="{{ url_for('index') }}" 
+                    class="nav-link-custom {% if request.endpoint == 'index' %}active{% endif %}"
+                >
+                    <i class="bi bi-grid-1x2-fill"></i>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+
+            <!-- INVENTARIO -->
+            <div class="nav-section">
+                <span class="nav-section-title">INVENTARIO</span>
+                <a 
+                    href="{{ url_for('productos') }}" 
+                    class="nav-link-custom {% if request.endpoint == 'productos' %}active{% endif %}"
+                >
+                    <i class="bi bi-box"></i>
+                    <span>Productos</span>
+                </a>
+                <a 
+                    href="{{ url_for('stock') }}" 
+                    class="nav-link-custom {% if request.endpoint == 'stock' %}active{% endif %}"
+                >
+                    <i class="bi bi-clipboard-data"></i>
+                    <span>Stock</span>
+                </a>
+                <a 
+                    href="{{ url_for('compras') }}" 
+                    class="nav-link-custom {% if request.endpoint == 'compras' %}active{% endif %}"
+                >
+                    <i class="bi bi-box-arrow-in-down"></i>
+                    <span>Compras</span>
+                </a>
+            </div>
+
+            <!-- OPERACIONES -->
+            <div class="nav-section">
+                <span class="nav-section-title">OPERACIONES</span>
+                <a 
+                    href="{{ url_for('ventas') }}" 
+                    class="nav-link-custom {% if request.endpoint == 'ventas' %}active{% endif %}"
+                >
+                    <i class="bi bi-cart3"></i>
+                    <span>Ventas</span>
+                </a>
+                <a 
+                    href="{{ url_for('historial') }}" 
+                    class="nav-link-custom {% if request.endpoint == 'historial' %}active{% endif %}"
+                >
+                    <i class="bi bi-clock-history"></i>
+                    <span>Historial</span>
+                </a>
+            </div>
+
+            <!-- CLIENTES -->
+            <div class="nav-section">
+                <span class="nav-section-title">CLIENTES</span>
+                <a 
+                    href="{{ url_for('clientes') }}" 
+                    class="nav-link-custom {% if request.endpoint == 'clientes' %}active{% endif %}"
+                >
+                    <i class="bi bi-people"></i>
+                    <span>Clientes</span>
+                </a>
+            </div>
+
+            <!-- REPORTES -->
+            <div class="nav-section">
+                <span class="nav-section-title">REPORTES</span>
+                <a 
+                    href="{{ url_for('balance') }}" 
+                    class="nav-link-custom {% if request.endpoint == 'balance' %}active{% endif %}"
+                >
+                    <i class="bi bi-graph-up-arrow"></i>
+                    <span>Balance</span>
+                </a>
+            </div>
+
+        </nav>
+
+        <!-- Parte inferior -->
+        <div class="sidebar-bottom">
+            <div class="sidebar-divider"></div>
+            <div class="sidebar-user">
+                <div class="user-avatar">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <div class="user-info">
+                    <strong>Administrador</strong>
+                    <small>Sistema ERP</small>
+                </div>
+            </div>
+        </div>
+
+    </aside>
+
+    <!-- =====================================================
+         CONTENIDO PRINCIPAL
+         ===================================================== -->
+
+    <main class="main-content">
+
+        <!-- TOPBAR -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <button 
+                    type="button" 
+                    class="mobile-menu-button" 
+                    id="mobileMenuBtn"
+                    aria-label="Abrir menú de navegación"
+                >
+                    <i class="bi bi-list"></i>
+                </button>
+                <div>
+                    <span class="topbar-label">SISTEMA DE GESTIÓN</span>
+                    <h1>{% block page_title %}Panel de administración{% endblock %}</h1>
+                </div>
+            </div>
+
+            <div class="topbar-right">
+                <div class="topbar-status">
+                    <span class="status-dot"></span>
+                    Sistema activo
+                </div>
+                <div class="topbar-user">
+                    <div class="topbar-avatar">
+                        <i class="bi bi-person"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTENIDO DE CADA PÁGINA -->
+        <section class="page-content">
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="custom-alert alert-{{ category }}">
+                            <div class="alert-body">
+                                {% if category == 'success' %}
+                                    <i class="bi bi-check-circle-fill"></i>
+                                {% elif category in ['error', 'danger'] %}
+                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                {% else %}
+                                    <i class="bi bi-info-circle-fill"></i>
+                                {% endif %}
+                                <span>{{ message }}</span>
+                            </div>
+                            
+                            <button type="button" class="btn-close-custom" aria-label="Cerrar alerta">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="erp-footer">
+            <span>Barritas ERP</span>
+            <span>Sistema de gestión de stock y ventas</span>
+        </footer>
+
+    </main>
+
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- JS propio -->
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
 </body>
 </html>
