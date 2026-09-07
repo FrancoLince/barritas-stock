@@ -90,7 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
         calcularTotalesYFiltrar();
     }
 
-    // Delegación de eventos para eliminar ítems del carrito (sin onclick inline)
     if (tablaCarrito) {
         tablaCarrito.addEventListener('click', (e) => {
             const btnEliminar = e.target.closest('.btn-eliminar-item');
@@ -102,24 +101,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ----------------------------------------------------
-    // 4. INTERFAZ UI / SIDEBAR / ALERTAS
+    // 4. INTERFAZ UI / SIDEBAR MÓVIL / ALERTAS
     // ----------------------------------------------------
     const toggleSidebar = () => {
-        if (sidebar) sidebar.classList.toggle('sidebar-open');
-        if (overlay) overlay.classList.toggle('active');
+        if (sidebar) {
+            sidebar.classList.toggle('sidebar-open');
+            sidebar.classList.toggle('active');
+        }
+        if (overlay) {
+            overlay.classList.toggle('active');
+            overlay.classList.toggle('show');
+        }
     };
 
     if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleSidebar);
     if (overlay) overlay.addEventListener('click', toggleSidebar);
 
-    // Cierre de alertas sin usar onclick inline
+    // Cerrar sidebar al hacer clic en cualquier opción del menú en celular
+    document.querySelectorAll('.sidebar-nav a').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth <= 768 && sidebar?.classList.contains('sidebar-open')) {
+                toggleSidebar();
+            }
+        });
+    });
+
+    // Cierre de alertas
     document.querySelectorAll('.custom-alert .btn-close-custom').forEach(button => {
         button.addEventListener('click', (e) => {
             e.target.closest('.custom-alert')?.remove();
         });
     });
 
-    // Confirmación global de formularios con atributo data-confirm
+    // Confirmación global de formularios con data-confirm
     document.addEventListener('submit', (e) => {
         const form = e.target;
         if (form.hasAttribute('data-confirm')) {
