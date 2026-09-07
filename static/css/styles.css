@@ -1881,6 +1881,37 @@ header:not(.topbar) h1 {
     letter-spacing: -0.5px;
     margin-top: 8px;
 }
+/* =========================================================
+   SOLUCIÓN DE DESBLOQUEO DE BOTÓN MÓVIL
+   ========================================================= */
+
+/* 1. Forzar a la Topbar a no bloquear elementos hijos */
+.topbar, 
+.topbar-left {
+    position: relative !important;
+    z-index: 1050 !important;
+    pointer-events: auto !important;
+}
+
+/* 2. Dar prioridad máxima y área de clic al botón */
+.mobile-menu-button {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    position: relative !important;
+    z-index: 9999 !important; /* Lo pone por encima de cualquier capa transparente */
+    pointer-events: auto !important; /* Fuerza a capturar el tap/clic */
+    cursor: pointer !important;
+    min-width: 44px; /* Tamaño mínimo recomendado para pantallas táctiles */
+    min-height: 44px;
+    background: transparent;
+    border: none;
+}
+
+.mobile-menu-button i {
+    font-size: 1.8rem;
+    pointer-events: none; /* Evita que el ícono interfiera con el clic del botón */
+}
 /* Asegurar prioridad de click al botón del menú */
 .mobile-menu-button {
     position: relative;
