@@ -1881,52 +1881,11 @@ header:not(.topbar) h1 {
     letter-spacing: -0.5px;
     margin-top: 8px;
 }
-/* =========================================================
-   SOLUCIÓN DE DESBLOQUEO DE BOTÓN MÓVIL
-   ========================================================= */
 
-/* 1. Forzar a la Topbar a no bloquear elementos hijos */
-.topbar, 
-.topbar-left {
-    position: relative !important;
-    z-index: 1050 !important;
-    pointer-events: auto !important;
-}
-
-/* 2. Dar prioridad máxima y área de clic al botón */
-.mobile-menu-button {
-    display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
-    position: relative !important;
-    z-index: 9999 !important; /* Lo pone por encima de cualquier capa transparente */
-    pointer-events: auto !important; /* Fuerza a capturar el tap/clic */
-    cursor: pointer !important;
-    min-width: 44px; /* Tamaño mínimo recomendado para pantallas táctiles */
-    min-height: 44px;
-    background: transparent;
-    border: none;
-}
-
-.mobile-menu-button i {
-    font-size: 1.8rem;
-    pointer-events: none; /* Evita que el ícono interfiera con el clic del botón */
-}
-/* Asegurar prioridad de click al botón del menú */
-.mobile-menu-button {
-    position: relative;
-    z-index: 1060 !important;
-    pointer-events: auto !important;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-}
-
-@media (max-width: 700px) {
-    .mobile-menu-button {
-        display: inline-flex !important;
-        align-items: center;
-        justify-content: center;
+/* Adaptación Responsive */
+@media (max-width: 900px) {
+    .balance-grid {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -1935,148 +1894,189 @@ header:not(.topbar) h1 {
    ========================================================= */
 
 @media (max-width: 1200px) {
+
     .dashboard-grid,
-    .mini-stats-grid,
+    .mini-stats-grid {
+
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
     .quick-actions {
-        grid-template-columns: repeat(2, 1fr);
+
+        grid-template-columns:
+            repeat(2, 1fr);
     }
 }
 
+
 @media (max-width: 900px) {
+
     .sidebar {
+
         width: 220px;
     }
 
     .main-content {
+
         margin-left: 220px;
-        width: calc(100% - 220px);
+
+        width:
+            calc(100% - 220px);
     }
 
     .page-content {
-        padding: 25px 20px;
+
+        padding:
+            25px 20px;
     }
 
     .topbar {
-        padding: 0 20px;
+
+        padding:
+            0 20px;
     }
 }
 
+
 @media (max-width: 700px) {
-    /* Overlay para celular */
-    .sidebar-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background-color: rgba(0, 0, 0, 0.5);
-        z-index: 1040;
-        opacity: 0;
-        transition: opacity 0.25s ease;
-    }
 
-    .sidebar-overlay.active,
-    .sidebar-overlay.show {
-        display: block;
-        opacity: 1;
-    }
-
-    /* Sidebar para celular */
     .sidebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        height: 100vh;
+
+        transform:
+            translateX(-100%);
+
+        transition:
+            transform 0.25s ease;
+
         width: 255px;
-        z-index: 1050;
-        transform: translateX(-100%);
-        visibility: hidden;
-        transition: transform 0.25s ease, visibility 0.25s ease;
     }
 
-    .sidebar.sidebar-open,
-    .sidebar.active {
-        transform: translateX(0);
-        visibility: visible;
+    .sidebar.sidebar-open {
+
+        transform:
+            translateX(0);
     }
 
     .main-content {
+
         margin-left: 0;
+
         width: 100%;
     }
 
     .mobile-menu-button {
+
         display: block;
     }
 
     .topbar-status {
+
         display: none;
     }
 
     .dashboard-header {
+
         align-items: flex-start;
+
         flex-direction: column;
+
         gap: 12px;
     }
 
     .dashboard-header h2 {
+
         font-size: 21px;
     }
 
     .dashboard-grid,
     .mini-stats-grid,
     .quick-actions {
-        grid-template-columns: 1fr;
+
+        grid-template-columns:
+            1fr;
     }
 
     .stock-alert-item {
-        grid-template-columns: 1fr;
+
+        grid-template-columns:
+            1fr;
+
         gap: 12px;
     }
 
     .stock-numbers {
+
         gap: 30px;
     }
 
     .erp-footer {
-        padding: 15px 20px;
+
+        padding:
+            15px 20px;
+
         flex-direction: column;
+
         gap: 4px;
     }
 }
 
+
 @media (max-width: 500px) {
+
     .page-content {
-        padding: 20px 14px;
+
+        padding:
+            20px 14px;
     }
 
     .topbar {
+
         height: 68px;
-        padding: 0 14px;
+
+        padding:
+            0 14px;
     }
 
     .dashboard-header h2 {
+
         font-size: 19px;
     }
 
     .stat-value {
+
         font-size: 21px;
     }
 
     .card-form {
+
         padding: 17px;
     }
 
     .form-grid {
-        grid-template-columns: 1fr;
+
+        grid-template-columns:
+            1fr;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .stat-card, .mini-stat-card, .quick-action, .erp-card {
-        animation: none;
-    }
+  .stat-card, .mini-stat-card, .quick-action, .erp-card {
+    animation: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .sidebar {
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 0.25s ease, visibility 0.25s ease;
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+    visibility: visible;
+  }
 }
 
 /* =========================================================
@@ -2087,16 +2087,29 @@ header:not(.topbar) h1 {
 .mini-stat-card,
 .quick-action,
 .erp-card {
-    animation: fadeInUp 0.35s ease both;
+
+    animation:
+        fadeInUp
+        0.35s
+        ease
+        both;
 }
 
 @keyframes fadeInUp {
+
     from {
+
         opacity: 0;
-        transform: translateY(7px);
+
+        transform:
+            translateY(7px);
     }
+
     to {
+
         opacity: 1;
-        transform: translateY(0);
+
+        transform:
+            translateY(0);
     }
 }
