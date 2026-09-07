@@ -1881,6 +1881,23 @@ header:not(.topbar) h1 {
     letter-spacing: -0.5px;
     margin-top: 8px;
 }
+/* Asegurar prioridad de click al botón del menú */
+.mobile-menu-button {
+    position: relative;
+    z-index: 1060 !important;
+    pointer-events: auto !important;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+@media (max-width: 700px) {
+    .mobile-menu-button {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+    }
+}
 
 /* =========================================================
    RESPONSIVE
