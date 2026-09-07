@@ -1882,201 +1882,153 @@ header:not(.topbar) h1 {
     margin-top: 8px;
 }
 
-/* Adaptación Responsive */
-@media (max-width: 900px) {
-    .balance-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
 /* =========================================================
    RESPONSIVE
    ========================================================= */
 
 @media (max-width: 1200px) {
-
     .dashboard-grid,
-    .mini-stats-grid {
-
-        grid-template-columns:
-            repeat(2, 1fr);
-    }
-
+    .mini-stats-grid,
     .quick-actions {
-
-        grid-template-columns:
-            repeat(2, 1fr);
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
-
 @media (max-width: 900px) {
-
     .sidebar {
-
         width: 220px;
     }
 
     .main-content {
-
         margin-left: 220px;
-
-        width:
-            calc(100% - 220px);
+        width: calc(100% - 220px);
     }
 
     .page-content {
-
-        padding:
-            25px 20px;
+        padding: 25px 20px;
     }
 
     .topbar {
-
-        padding:
-            0 20px;
+        padding: 0 20px;
     }
 }
 
-
 @media (max-width: 700px) {
-
-    .sidebar {
-
-        transform:
-            translateX(-100%);
-
-        transition:
-            transform 0.25s ease;
-
-        width: 255px;
+    /* Overlay para celular */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1040;
+        opacity: 0;
+        transition: opacity 0.25s ease;
     }
 
-    .sidebar.sidebar-open {
+    .sidebar-overlay.active,
+    .sidebar-overlay.show {
+        display: block;
+        opacity: 1;
+    }
 
-        transform:
-            translateX(0);
+    /* Sidebar para celular */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 255px;
+        z-index: 1050;
+        transform: translateX(-100%);
+        visibility: hidden;
+        transition: transform 0.25s ease, visibility 0.25s ease;
+    }
+
+    .sidebar.sidebar-open,
+    .sidebar.active {
+        transform: translateX(0);
+        visibility: visible;
     }
 
     .main-content {
-
         margin-left: 0;
-
         width: 100%;
     }
 
     .mobile-menu-button {
-
         display: block;
     }
 
     .topbar-status {
-
         display: none;
     }
 
     .dashboard-header {
-
         align-items: flex-start;
-
         flex-direction: column;
-
         gap: 12px;
     }
 
     .dashboard-header h2 {
-
         font-size: 21px;
     }
 
     .dashboard-grid,
     .mini-stats-grid,
     .quick-actions {
-
-        grid-template-columns:
-            1fr;
+        grid-template-columns: 1fr;
     }
 
     .stock-alert-item {
-
-        grid-template-columns:
-            1fr;
-
+        grid-template-columns: 1fr;
         gap: 12px;
     }
 
     .stock-numbers {
-
         gap: 30px;
     }
 
     .erp-footer {
-
-        padding:
-            15px 20px;
-
+        padding: 15px 20px;
         flex-direction: column;
-
         gap: 4px;
     }
 }
 
-
 @media (max-width: 500px) {
-
     .page-content {
-
-        padding:
-            20px 14px;
+        padding: 20px 14px;
     }
 
     .topbar {
-
         height: 68px;
-
-        padding:
-            0 14px;
+        padding: 0 14px;
     }
 
     .dashboard-header h2 {
-
         font-size: 19px;
     }
 
     .stat-value {
-
         font-size: 21px;
     }
 
     .card-form {
-
         padding: 17px;
     }
 
     .form-grid {
-
-        grid-template-columns:
-            1fr;
+        grid-template-columns: 1fr;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stat-card, .mini-stat-card, .quick-action, .erp-card {
-    animation: none;
-  }
-}
-
-@media (max-width: 700px) {
-  .sidebar {
-    transform: translateX(-100%);
-    visibility: hidden;
-    transition: transform 0.25s ease, visibility 0.25s ease;
-  }
-
-  .sidebar.sidebar-open {
-    transform: translateX(0);
-    visibility: visible;
-  }
+    .stat-card, .mini-stat-card, .quick-action, .erp-card {
+        animation: none;
+    }
 }
 
 /* =========================================================
@@ -2087,29 +2039,16 @@ header:not(.topbar) h1 {
 .mini-stat-card,
 .quick-action,
 .erp-card {
-
-    animation:
-        fadeInUp
-        0.35s
-        ease
-        both;
+    animation: fadeInUp 0.35s ease both;
 }
 
 @keyframes fadeInUp {
-
     from {
-
         opacity: 0;
-
-        transform:
-            translateY(7px);
+        transform: translateY(7px);
     }
-
     to {
-
         opacity: 1;
-
-        transform:
-            translateY(0);
+        transform: translateY(0);
     }
 }
