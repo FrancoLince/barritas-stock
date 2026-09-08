@@ -4,6 +4,7 @@
 {% block page_title %}Control de Caja y Capital{% endblock %}
 
 {% block content %}
+<!-- TARJETAS DE RESUMEN DE CAJA -->
 <div class="row mb-4 g-3">
     <!-- Capital Total -->
     <div class="col-md-4">
@@ -28,9 +29,45 @@
     </div>
 </div>
 
+<!-- SECCIÓN 1: MOVIMIENTOS RÁPIDOS (SUMAR / RESTAR) -->
+<div class="erp-card mb-4">
+    <h5 class="mb-1 fw-bold">Ingreso / Egreso Rápido de Dinero</h5>
+    <p class="text-muted small mb-3">Usá esta sección para sumar o restar importes específicos (gastos varios, retiros o ingresos extra).</p>
+    
+    <form action="{{ url_for('movimiento_caja') }}" method="POST">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="tipo_movimiento" class="form-label fw-bold">Acción</label>
+                <select name="tipo_movimiento" id="tipo_movimiento" class="form-select" required>
+                    <option value="sumar">Sumar (+)</option>
+                    <option value="restar">Restar (-)</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label for="medio" class="form-label fw-bold">Medio de Pago</label>
+                <select name="medio" id="medio" class="form-select" required>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="transferencia">Transferencia</option>
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <label for="monto" class="form-label fw-bold">Monto ($)</label>
+                <input type="number" step="0.01" min="0.01" id="monto" name="monto" class="form-control" placeholder="0.00" required>
+            </div>
+
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-success w-100 fw-bold">Aplicar Movimiento</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- SECCIÓN 2: AJUSTE / REINICIALIZACIÓN DE SALDOS TOTALES -->
 <div class="erp-card">
-    <h5 class="mb-3">Ajuste Manual de Caja</h5>
-    <p class="text-muted small">Usá esta sección si querés inicializar el capital o hacer un ajuste de saldo.</p>
+    <h5 class="mb-1 fw-bold">Ajuste Manual Absoluto</h5>
+    <p class="text-muted small mb-3">Usá esta sección para redefinir directamente los valores finales de efectivo o transferencia.</p>
     
     <form action="{{ url_for('caja') }}" method="POST">
         <div class="row g-3">
@@ -44,7 +81,7 @@
             </div>
         </div>
         <div class="mt-3 text-end">
-            <button type="submit" class="btn btn-primary">Actualizar Capital</button>
+            <button type="submit" class="btn btn-outline-primary">Actualizar Saldos Directos</button>
         </div>
     </form>
 </div>
