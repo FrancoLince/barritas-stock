@@ -3,13 +3,12 @@ import os
 import json
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from sqlalchemy.orm import joinedload
 from database import db, init_db
 from models import TipoCliente, Producto, PrecioProducto, Compra, Cliente, Venta, DetalleVenta, User, Caja
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev_key_super_secreta")
-
-# Configuración de duración de sesión
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 init_db(app)
@@ -54,8 +53,6 @@ with app.app_context():
             nuevo_usuario = User(username=username)
             nuevo_usuario.set_password(password)
             db.session.add(nuevo_usuario)
-        else:
-            usuario.set_password(password)
         
     db.session.commit()
 
@@ -98,9 +95,8 @@ def logout():
 def index():
     productos = Producto.query.all()
     clientes_list = Cliente.query.all()
-    ventas_list = Venta.query.all()
+    ventas_list = Venta.query.options(joinedload(Venta.detalles)).all()
 
-    # Incluimos Efectivo, Transferencia y Mixto
     ventas_cobradas = [
         v for v in ventas_list 
         if v.observaciones and any(estado in v.observaciones for estado in ['Efectivo', 'Transferencia', 'Mixto'])
@@ -112,7 +108,7 @@ def index():
     total_ganancias = sum(v.ganancia for v in ventas_cobradas)
     
     total_cajas_vendidas = sum(
-        sum(d.cantidad_cajas for d in v.detalles) if hasattr(v, 'detalles') and v.detalles else getattr(v, 'cantidad_cajas', 0)
+        sum(d.cantidad_cajas for d in v.detalles) if v.detalles else getattr(v, 'cantidad_cajas', 0)
         for v in ventas_list
     )
 
@@ -297,7 +293,6 @@ def compras():
             prod.stock_cajas += cantidad_cajas
             prod.costo_caja = costo_por_caja
 
-        # --- IMPACTO EN CAJA POR COMPRA (RESTA DEL CAPITAL) ---
         caja_obj = obtener_o_crear_caja()
         if medio_pago == 'Transferencia':
             caja_obj.saldo_transferencia -= costo_total
@@ -391,7 +386,6 @@ def ventas():
             flash("Debe agregar al menos un producto a la venta.", "danger")
             return redirect(url_for('ventas'))
 
-        # Validar stock antes de crear
         for item in items:
             prod = db.session.get(Producto, item['producto_id'])
             if not prod or item['cantidad'] > prod.stock_cajas:
@@ -431,25 +425,21 @@ def ventas():
             )
             
             prod.stock_cajas -= cant
-            
             total_venta += subtotal
             costo_total_venta += costo_sub
             db.session.add(detalle)
 
-        # Asignar los montos de pago según el método elegido
         nueva_venta.total = total_venta
         nueva_venta.costo_total = costo_total_venta
         ganancia_venta = total_venta - costo_total_venta
         nueva_venta.ganancia = ganancia_venta
 
-        # --- IMPACTO EN CAJA POR VENTA (SUMA LA GANANCIA) ---
         caja_obj = obtener_o_crear_caja()
 
         if observaciones == 'Mixto':
             monto_ef = float(request.form.get('monto_efectivo') or 0)
             monto_tr = float(request.form.get('monto_transferencia') or 0)
             
-            # Validación de seguridad backend
             if abs((monto_ef + monto_tr) - total_venta) > 0.01:
                 db.session.rollback()
                 flash("Error: La suma de efectivo y transferencia no coincide con el total de la venta.", "danger")
@@ -458,7 +448,6 @@ def ventas():
             nueva_venta.monto_efectivo = monto_ef
             nueva_venta.monto_transferencia = monto_tr
 
-            # Proporción de ganancia para cada saldo
             if total_venta > 0:
                 prop_efectivo = monto_ef / total_venta
                 prop_transferencia = monto_tr / total_venta
@@ -483,9 +472,8 @@ def ventas():
         flash('Venta registrada con éxito.', 'success')
         return redirect(url_for('ventas'))
 
-    # GET
     estado_filtro = request.args.get('estado', 'todos')
-    todas_las_ventas = Venta.query.order_by(Venta.fecha.desc()).all()
+    todas_las_ventas = Venta.query.options(joinedload(Venta.cliente)).order_by(Venta.fecha.desc()).all()
 
     if estado_filtro != 'todos':
         ventas_filtradas = [v for v in todas_las_ventas if v.observaciones and estado_filtro in v.observaciones]
@@ -495,7 +483,6 @@ def ventas():
     clientes = Cliente.query.all()
     productos = Producto.query.filter(Producto.stock_cajas > 0).all()
 
-    # Cálculo de los subtotales globales
     totales = {
         'Efectivo': sum((v.monto_efectivo or (v.total if v.observaciones == 'Efectivo' else 0)) for v in todas_las_ventas),
         'Transferencia': sum((v.monto_transferencia or (v.total if v.observaciones == 'Transferencia' else 0)) for v in todas_las_ventas),
@@ -522,7 +509,7 @@ def ventas():
 @login_required
 def balance():
     filtro = request.args.get('filtro', 'mes')
-    hoy = datetime.now(timezone.utc).date()
+    hoy = datetime.now().date()
 
     query = Venta.query
 
@@ -560,8 +547,8 @@ def balance():
 @app.route('/historial')
 @login_required
 def historial():
-    compras_list = Compra.query.all()
-    ventas_list = Venta.query.all()
+    compras_list = Compra.query.options(joinedload(Compra.producto)).all()
+    ventas_list = Venta.query.options(joinedload(Venta.cliente), joinedload(Venta.detalles).joinedload(DetalleVenta.producto)).all()
 
     movimientos = []
 
@@ -569,20 +556,20 @@ def historial():
         movimientos.append({
             'fecha': c.fecha,
             'tipo': 'COMPRA (+ Stock)',
-            'producto': f"{c.producto.nombre} ({c.producto.sabor})",
+            'producto': f"{c.producto.nombre if c.producto else 'N/A'} ({c.producto.sabor if c.producto else ''})",
             'cajas': f"+{c.cantidad_cajas}",
             'detalle': f"Proveedor: {c.proveedor or '-'}",
             'monto': f"-${c.costo_total:,.2f}"
         })
 
     for v in ventas_list:
-        detalles_prod = ", ".join([f"{d.producto.nombre} x{d.cantidad_cajas}" for d in v.detalles]) if hasattr(v, 'detalles') and v.detalles else "Venta"
+        detalles_prod = ", ".join([f"{d.producto.nombre} x{d.cantidad_cajas}" for d in v.detalles if d.producto]) if v.detalles else "Venta"
         movimientos.append({
             'fecha': v.fecha,
             'tipo': 'VENTA (- Stock)',
             'producto': detalles_prod,
-            'cajas': f"-{sum(d.cantidad_cajas for d in v.detalles) if hasattr(v, 'detalles') and v.detalles else 0}",
-            'detalle': f"Cliente: {v.cliente.nombre}",
+            'cajas': f"-{sum(d.cantidad_cajas for d in v.detalles) if v.detalles else 0}",
+            'detalle': f"Cliente: {v.cliente.nombre if v.cliente else 'Sin cliente'}",
             'monto': f"+${v.total:,.2f}"
         })
 
@@ -614,9 +601,15 @@ def eliminar_compra(compra_id):
     if producto:
         producto.stock_cajas = max(0, producto.stock_cajas - compra.cantidad_cajas)
 
+    caja_obj = obtener_o_crear_caja()
+    if compra.medio_pago == 'Transferencia':
+        caja_obj.saldo_transferencia += compra.costo_total
+    else:
+        caja_obj.saldo_efectivo += compra.costo_total
+
     db.session.delete(compra)
     db.session.commit()
-    flash("Compra eliminada y stock descontado correctamente.", "info")
+    flash("Compra eliminada, stock descontado y dinero devuelto a caja.", "info")
     return redirect(url_for('compras'))
 
 
@@ -641,9 +634,17 @@ def eliminar_venta(venta_id):
             if producto:
                 producto.stock_cajas += detalle.cantidad_cajas
 
+    caja_obj = obtener_o_crear_caja()
+    if venta.observaciones in ['Efectivo', 'Transferencia', 'Mixto']:
+        if venta.total > 0:
+            prop_ef = (venta.monto_efectivo or 0) / venta.total
+            prop_tr = (venta.monto_transferencia or 0) / venta.total
+            caja_obj.saldo_efectivo -= (venta.ganancia * prop_ef)
+            caja_obj.saldo_transferencia -= (venta.ganancia * prop_tr)
+
     db.session.delete(venta)
     db.session.commit()
-    flash("Venta eliminada y stock devuelto correctamente.", "info")
+    flash("Venta eliminada, stock devuelto y saldo ajustado en caja.", "info")
     return redirect(url_for('ventas'))
 
 
@@ -686,7 +687,6 @@ def editar_venta(venta_id):
         venta.costo_total = nuevo_costo_total
         venta.ganancia = nuevo_total - nuevo_costo_total
 
-        # Asignación de montos según método de pago
         if observaciones == 'Mixto':
             monto_ef = float(request.form.get('monto_efectivo') or 0)
             monto_tr = float(request.form.get('monto_transferencia') or 0)
@@ -715,42 +715,6 @@ def editar_venta(venta_id):
     clientes = Cliente.query.all()
     return render_template('editar_venta.html', venta=venta, clientes=clientes)
 
-"""
-def inicializar_datos_base():
-    \"\"\"Crea los tipos de cliente por defecto y los usuarios iniciales.\"\"\"
-    tipos_defecto = ['Mayorista', 'Revendedor', 'Minorista', 'Distribuidoras grandes']
-    for nombre in tipos_defecto:
-        if not TipoCliente.query.filter_by(nombre=nombre).first():
-            db.session.add(TipoCliente(nombre=nombre))
-    
-    usuarios_iniciales = [
-        ("admin", "admin"),
-        ("Emilia", "Barritas123"),
-        ("Analia", "Barritas123"),
-        ("Cati", "Barritas123")
-    ]
 
-    for username, password in usuarios_iniciales:
-        usuario = User.query.filter_by(username=username).first()
-        if not usuario:
-            nuevo_usuario = User(username=username)
-            nuevo_usuario.set_password(password)
-            db.session.add(nuevo_usuario)
-        else:
-            usuario.set_password(password)
-        
-    db.session.commit()
-
-@app.route('/reset-db-hard')
-def reset_db_hard():
-    db.drop_all()   # Borra todas las tablas de Supabase
-    db.create_all() # Las vuelve a crear vacías
-    inicializar_datos_base() # Crea inmediatamente los usuarios y tipos de cliente
-    return "Base de datos borrada, recreada y usuarios creados con éxito."
-
-# Ejecución al iniciar la app
-with app.app_context():
-    inicializar_datos_base()
-"""
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
