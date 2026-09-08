@@ -509,7 +509,8 @@ def ventas():
 @login_required
 def balance():
     filtro = request.args.get('filtro', 'mes')
-    hoy = datetime.now().date()
+    # Cálculo de la fecha actual de Argentina (UTC-3) sin dependencias externas
+    hoy = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=-3))).date()
 
     query = Venta.query
 
@@ -714,6 +715,8 @@ def editar_venta(venta_id):
 
     clientes = Cliente.query.all()
     return render_template('editar_venta.html', venta=venta, clientes=clientes)
+
+
 @app.route('/caja/movimiento', methods=['POST'])
 @login_required
 def movimiento_caja():
