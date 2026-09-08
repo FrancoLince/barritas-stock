@@ -715,8 +715,9 @@ def editar_venta(venta_id):
     clientes = Cliente.query.all()
     return render_template('editar_venta.html', venta=venta, clientes=clientes)
 
+"""
 def inicializar_datos_base():
-    """Crea los tipos de cliente por defecto y los usuarios iniciales."""
+    \"\"\"Crea los tipos de cliente por defecto y los usuarios iniciales.\"\"\"
     tipos_defecto = ['Mayorista', 'Revendedor', 'Minorista', 'Distribuidoras grandes']
     for nombre in tipos_defecto:
         if not TipoCliente.query.filter_by(nombre=nombre).first():
@@ -750,5 +751,6 @@ def reset_db_hard():
 # Ejecución al iniciar la app
 with app.app_context():
     inicializar_datos_base()
+"""
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
