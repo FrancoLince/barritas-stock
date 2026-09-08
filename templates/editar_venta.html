@@ -24,12 +24,25 @@
 
             <div class="col-md-6">
                 <label for="observaciones" class="form-label fw-bold">Estado / Método de Pago</label>
-                <select name="observaciones" id="observaciones" class="form-select" required>
+                <select name="observaciones" id="observaciones" class="form-select" required onchange="toggleMixto(this.value)">
                     <option value="Efectivo" {% if 'Efectivo' in (venta.observaciones or '') %}selected{% endif %}>Efectivo</option>
                     <option value="Transferencia" {% if 'Transferencia' in (venta.observaciones or '') %}selected{% endif %}>Transferencia</option>
+                    <option value="Mixto" {% if 'Mixto' in (venta.observaciones or '') %}selected{% endif %}>Mixto</option>
                     <option value="Debiendo" {% if 'Debiendo' in (venta.observaciones or '') %}selected{% endif %}>Debiendo</option>
                     <option value="En Proceso" {% if 'En Proceso' in (venta.observaciones or '') %}selected{% endif %}>En Proceso</option>
                 </select>
+            </div>
+        </div>
+
+        <!-- Contenedor desplegable para Pago Mixto -->
+        <div id="contenedor_mixto" class="row mb-3 g-3 p-3 bg-light border rounded {% if 'Mixto' not in (venta.observaciones or '') %}d-none{% endif %}">
+            <div class="col-md-6">
+                <label for="monto_efectivo" class="form-label fw-bold">Monto Efectivo ($)</label>
+                <input type="number" step="0.01" id="monto_efectivo" name="monto_efectivo" class="form-control" value="{{ venta.monto_efectivo or 0.0 }}">
+            </div>
+            <div class="col-md-6">
+                <label for="monto_transferencia" class="form-label fw-bold">Monto Transferencia ($)</label>
+                <input type="number" step="0.01" id="monto_transferencia" name="monto_transferencia" class="form-control" value="{{ venta.monto_transferencia or 0.0 }}">
             </div>
         </div>
 
@@ -60,4 +73,15 @@
         </div>
     </form>
 </div>
+
+<script>
+function toggleMixto(valor) {
+    const contenedor = document.getElementById('contenedor_mixto');
+    if (valor === 'Mixto') {
+        contenedor.classList.remove('d-none');
+    } else {
+        contenedor.classList.add('d-none');
+    }
+}
+</script>
 {% endblock %}
