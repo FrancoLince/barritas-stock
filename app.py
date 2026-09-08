@@ -714,6 +714,35 @@ def editar_venta(venta_id):
 
     clientes = Cliente.query.all()
     return render_template('editar_venta.html', venta=venta, clientes=clientes)
+@app.route('/caja/movimiento', methods=['POST'])
+@login_required
+def movimiento_caja():
+    tipo_movimiento = request.form.get('tipo_movimiento')  # 'sumar' o 'restar'
+    medio = request.form.get('medio')                      # 'efectivo' o 'transferencia'
+    monto = float(request.form.get('monto', 0.0))
+
+    if monto <= 0:
+        flash("El monto debe ser mayor a 0.", "warning")
+        return redirect(url_for('caja'))
+
+    caja_obj = obtener_o_crear_caja()
+
+    if tipo_movimiento == 'sumar':
+        if medio == 'efectivo':
+            caja_obj.saldo_efectivo += monto
+        elif medio == 'transferencia':
+            caja_obj.saldo_transferencia += monto
+        flash(f"Se sumaron ${monto:,.2f} al saldo de {medio}.", "success")
+
+    elif tipo_movimiento == 'restar':
+        if medio == 'efectivo':
+            caja_obj.saldo_efectivo -= monto
+        elif medio == 'transferencia':
+            caja_obj.saldo_transferencia -= monto
+        flash(f"Se restaron ${monto:,.2f} del saldo de {medio}.", "warning")
+
+    db.session.commit()
+    return redirect(url_for('caja'))
 
 
 if __name__ == '__main__':
