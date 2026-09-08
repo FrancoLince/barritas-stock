@@ -1,7 +1,12 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from database import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+
+# Función auxiliar para la hora local de Argentina (UTC-3) sin dependencias externas
+def obtener_fecha_argentina():
+    return datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=-3))).replace(tzinfo=None)
+
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
@@ -42,7 +47,6 @@ class Producto(db.Model):
     stock_minimo = db.Column(db.Integer, default=5, nullable=False)
     costo_caja = db.Column(db.Float, default=0.0, nullable=False)
 
-    # Relaciones con borrado en cascada
     precios = db.relationship('PrecioProducto', backref='producto', cascade="all, delete-orphan", lazy=True)
     compras = db.relationship('Compra', backref='producto', cascade="all, delete-orphan", lazy=True)
     detalles_venta = db.relationship('DetalleVenta', backref='producto', cascade="all, delete-orphan", lazy=True)
@@ -77,7 +81,7 @@ class Cliente(db.Model):
     direccion = db.Column(db.String(150), nullable=True)
     tipo_cliente_id = db.Column(db.Integer, db.ForeignKey('tipo_cliente.id'), nullable=False)
     observaciones = db.Column(db.Text, nullable=True)
-    fecha_alta = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    fecha_alta = db.Column(db.DateTime, default=obtener_fecha_argentina)
 
     ventas = db.relationship('Venta', backref='cliente', lazy=True)
 
@@ -91,7 +95,7 @@ class Compra(db.Model):
     costo_por_caja = db.Column(db.Float, nullable=False)
     costo_total = db.Column(db.Float, nullable=False)
     proveedor = db.Column(db.String(100), nullable=True)
-    fecha = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    fecha = db.Column(db.DateTime, default=obtener_fecha_argentina)
     medio_pago = db.Column(db.String(50))
 
 
@@ -100,7 +104,7 @@ class Venta(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
-    fecha = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    fecha = db.Column(db.DateTime, default=obtener_fecha_argentina)
     total = db.Column(db.Float, default=0.0, nullable=False)
     costo_total = db.Column(db.Float, default=0.0, nullable=False)
     ganancia = db.Column(db.Float, default=0.0, nullable=False)
@@ -108,6 +112,7 @@ class Venta(db.Model):
     detalles = db.relationship('DetalleVenta', backref='venta', cascade="all, delete-orphan", lazy=True)
     monto_efectivo = db.Column(db.Float, default=0.0)
     monto_transferencia = db.Column(db.Float, default=0.0)
+
 
 class DetalleVenta(db.Model):
     __tablename__ = 'detalle_venta'
@@ -120,8 +125,10 @@ class DetalleVenta(db.Model):
     subtotal = db.Column(db.Float, nullable=False)
     costo_subtotal = db.Column(db.Float, nullable=False)
 
+
 class Caja(db.Model):
     __tablename__ = 'caja'
+
     id = db.Column(db.Integer, primary_key=True)
     saldo_efectivo = db.Column(db.Float, default=0.0)
     saldo_transferencia = db.Column(db.Float, default=0.0)
