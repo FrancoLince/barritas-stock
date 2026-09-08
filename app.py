@@ -721,32 +721,35 @@ def reset_db_hard():
     db.create_all() # Las vuelve a crear vacías
     return "Base de datos de Supabase borrada y recreada por completo."
 def crear_usuarios_iniciales():
-    """Crea los usuarios iniciales si no existen en la base de datos."""
+    """Crea los usuarios requeridos si no existen en la base de datos."""
     usuarios_deseados = [
-        {"username": "admin", "password": "admin", "rol": "administrador"},
-        {"username": "Analia", "password": "Barritas123", "rol": "usuario"},
-        {"username": "Emilia", "password": "Barritas123", "rol": "usuario"},
-        {"username": "Cati", "password": "Barritas123", "rol": "usuario"}
+        {"username": "admin", "password": "admin"},
+        {"username": "Analia", "password": "Barritas123"},
+        {"username": "Emilia", "password": "Barritas123"},
+        {"username": "Cati", "password": "Barritas123"}
     ]
 
-    for u in usuarios_deseados:
-        # Verificar si el usuario ya existe para no duplicarlo
-        usuario_existente = Usuario.query.filter_by(username=u["username"]).first()
-        if not usuario_existente:
-            nuevo_usuario = Usuario(
-                username=u["username"],
-                password=generate_password_hash(u["password"]),
-                rol=u.get("rol", "usuario")  # Ajusta o borra esta línea si tu modelo no usa el campo 'rol'
-            )
-            db.session.add(nuevo_usuario)
-            print(f"Usuario {u['username']} creado con éxito.")
-    
-    db.session.commit()
+    try:
+        # Asegura la existencia de las tablas
+        db.create_all()
 
-# Crear usuarios al arrancar la aplicación
+        for u in usuarios_deseados:
+            usuario_existente = User.query.filter_by(username=u["username"]).first()
+            
+            if not usuario_existente:
+                nuevo_usuario = User(username=u["username"])
+                nuevo_usuario.set_password(u["password"])  # Usa el método de tu modelo
+                db.session.add(nuevo_usuario)
+                print(f"Usuario {u['username']} creado con éxito.")
+
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error al sincronizar usuarios: {e}")
+
+# Ejecución al iniciar el contexto de la aplicación
 with app.app_context():
     crear_usuarios_iniciales()
-
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
