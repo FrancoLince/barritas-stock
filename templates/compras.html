@@ -33,8 +33,12 @@
                 <input type="text" id="proveedor" name="proveedor" placeholder="Distribuidora Oficial">
             </div>
             <div class="form-group grid-span-2">
-                <label for="observaciones">Observaciones:</label>
-                <input type="text" id="observaciones" name="observaciones" placeholder="Lote o número de factura...">
+                <label for="medio_pago">Medio de Pago:</label>
+                <select id="medio_pago" name="medio_pago" required>
+                    <option value="">Seleccione medio de pago...</option>
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Transferencia">Transferencia</option>
+                </select>
             </div>
         </div>
 
@@ -57,7 +61,7 @@
                     <th>Costo/Caja</th>
                     <th>Costo Total</th>
                     <th>Proveedor</th>
-                    <th>Observaciones</th>
+                    <th>Medio de Pago</th>
                     <th class="text-end">Acciones</th>
                 </tr>
             </thead>
@@ -70,7 +74,7 @@
                     <td>${{ "{:,.2f}".format(c.costo_por_caja | default(0)) }}</td>
                     <td><strong>${{ "{:,.2f}".format(c.costo_total | default(0)) }}</strong></td>
                     <td>{{ c.proveedor or '-' }}</td>
-                    <td>{{ c.observaciones or '-' }}</td>
+                    <td>{{ c.medio_pago or '-' }}</td>
                     <td class="text-end">
                         <form action="{{ url_for('eliminar_compra', compra_id=c.id) }}" method="POST" class="d-inline" data-confirm="¿Anular esta compra? Se descontará el stock agregando al producto.">
                             <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ Anular</button>
