@@ -90,9 +90,10 @@ def index():
     clientes_list = Cliente.query.all()
     ventas_list = Venta.query.all()
 
+    # Agregamos 'Mixto' a los métodos de pago cobrados
     ventas_cobradas = [
         v for v in ventas_list 
-        if v.observaciones and ('Efectivo' in v.observaciones or 'Transferencia' in v.observaciones)
+        if v.observaciones and any(metodo in v.observaciones for metodo in ['Efectivo', 'Transferencia', 'Mixto'])
     ]
 
     total_cajas_stock = sum(p.stock_cajas for p in productos)
