@@ -101,6 +101,14 @@
                     <i class="bi bi-cart3"></i>
                     <span>Ventas</span>
                 </a>
+                <!-- OPCIÓN AGREGADA: CAJA -->
+                <a 
+                    href="{{ url_for('caja') }}" 
+                    class="nav-link-custom {% if request.endpoint == 'caja' %}active{% endif %}"
+                >
+                    <i class="bi bi-cash-coin"></i>
+                    <span>Caja</span>
+                </a>
                 <a 
                     href="{{ url_for('historial') }}" 
                     class="nav-link-custom {% if request.endpoint == 'historial' %}active{% endif %}"
@@ -233,6 +241,36 @@
 
 <!-- JS propio -->
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+<!-- Lógica interactiva básica e inserción de scripts por plantilla -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Cierre interactivo de las alertas personalizadas
+        document.querySelectorAll('.btn-close-custom').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const alert = e.target.closest('.custom-alert');
+                if (alert) alert.remove();
+            });
+        });
+
+        // Alternar visualización del sidebar en dispositivos móviles
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+
+        if (mobileMenuBtn && sidebar && overlay) {
+            const toggleSidebar = () => {
+                sidebar.classList.toggle('show');
+                overlay.classList.toggle('show');
+            };
+
+            mobileMenuBtn.addEventListener('click', toggleSidebar);
+            overlay.addEventListener('click', toggleSidebar);
+        }
+    });
+</script>
+
+{% block scripts %}{% endblock %}
 
 </body>
 </html>
