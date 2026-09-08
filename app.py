@@ -24,13 +24,13 @@ def load_user(user_id):
     return db.session.get(User, int(user_id))
 
 
-# --- INICIALIZACIÓN DE DATOS AL ARRANCAR (SEED) ---
+# --- INICIALIZACIÓN DE DATOS (SEED) ---
 with app.app_context():
     tipos_defecto = ['Mayorista', 'Revendedor', 'Minorista', 'Distribuidoras grandes']
     for nombre in tipos_defecto:
         if not TipoCliente.query.filter_by(nombre=nombre).first():
             db.session.add(TipoCliente(nombre=nombre))
-        
+    
     usuarios_iniciales = [
         ("admin", "admin"),
         ("Emilia", "Barritas123"),
@@ -46,7 +46,7 @@ with app.app_context():
             db.session.add(nuevo_usuario)
         else:
             usuario.set_password(password)
-            
+        
     db.session.commit()
 
 
@@ -90,10 +90,10 @@ def index():
     clientes_list = Cliente.query.all()
     ventas_list = Venta.query.all()
 
-    # Agregamos 'Mixto' a los métodos de pago cobrados
+    # Incluimos Efectivo, Transferencia y Mixto
     ventas_cobradas = [
         v for v in ventas_list 
-        if v.observaciones and any(metodo in v.observaciones for metodo in ['Efectivo', 'Transferencia', 'Mixto'])
+        if v.observaciones and any(estado in v.observaciones for estado in ['Efectivo', 'Transferencia', 'Mixto'])
     ]
 
     total_cajas_stock = sum(p.stock_cajas for p in productos)
@@ -443,10 +443,11 @@ def ventas():
     clientes = Cliente.query.all()
     productos = Producto.query.filter(Producto.stock_cajas > 0).all()
 
-    # Cálculo de los subtotales globales (incluyendo desgloses de pagos mixtos)
+    # Cálculo de los subtotales globales
     totales = {
         'Efectivo': sum((v.monto_efectivo or (v.total if v.observaciones == 'Efectivo' else 0)) for v in todas_las_ventas),
         'Transferencia': sum((v.monto_transferencia or (v.total if v.observaciones == 'Transferencia' else 0)) for v in todas_las_ventas),
+        'Mixto': sum(v.total for v in todas_las_ventas if v.observaciones and 'Mixto' in v.observaciones),
         'Debiendo': sum(v.total for v in todas_las_ventas if v.observaciones and 'Debiendo' in v.observaciones),
         'En Proceso': sum(v.total for v in todas_las_ventas if v.observaciones and 'En Proceso' in v.observaciones),
     }
@@ -485,7 +486,6 @@ def balance():
 
     ventas_filtradas = query.order_by(Venta.fecha.desc()).all()
 
-    # Se agrega 'Mixto' a la lista de métodos de pago cobrados
     ventas_cobradas = [
         v for v in ventas_filtradas 
         if v.observaciones and any(metodo in v.observaciones for metodo in ['Efectivo', 'Transferencia', 'Mixto'])
@@ -503,6 +503,7 @@ def balance():
         filtro_actual=filtro,
         ventas=ventas_cobradas
     )
+
 
 @app.route('/historial')
 @login_required
@@ -601,7 +602,8 @@ def editar_venta(venta_id):
 
     if request.method == 'POST':
         venta.cliente_id = int(request.form.get('cliente_id'))
-        venta.observaciones = request.form.get('observaciones')
+        observaciones = request.form.get('observaciones')
+        venta.observaciones = observaciones
 
         nuevo_total = 0.0
         nuevo_costo_total = 0.0
@@ -632,12 +634,35 @@ def editar_venta(venta_id):
         venta.costo_total = nuevo_costo_total
         venta.ganancia = nuevo_total - nuevo_costo_total
 
+        # Asignación de montos según método de pago
+        if observaciones == 'Mixto':
+            monto_ef = float(request.form.get('monto_efectivo') or 0)
+            monto_tr = float(request.form.get('monto_transferencia') or 0)
+
+            if abs((monto_ef + monto_tr) - nuevo_total) > 0.01:
+                db.session.rollback()
+                flash("Error: La suma de efectivo y transferencia no coincide con el total de la venta.", "danger")
+                return redirect(url_for('editar_venta', venta_id=venta.id))
+
+            venta.monto_efectivo = monto_ef
+            venta.monto_transferencia = monto_tr
+        elif observaciones == 'Efectivo':
+            venta.monto_efectivo = nuevo_total
+            venta.monto_transferencia = 0.0
+        elif observaciones == 'Transferencia':
+            venta.monto_efectivo = 0.0
+            venta.monto_transferencia = nuevo_total
+        else:
+            venta.monto_efectivo = 0.0
+            venta.monto_transferencia = 0.0
+
         db.session.commit()
         flash("Venta modificada con éxito.", "success")
         return redirect(url_for('ventas'))
 
     clientes = Cliente.query.all()
     return render_template('editar_venta.html', venta=venta, clientes=clientes)
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
