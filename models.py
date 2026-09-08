@@ -92,7 +92,7 @@ class Compra(db.Model):
     costo_total = db.Column(db.Float, nullable=False)
     proveedor = db.Column(db.String(100), nullable=True)
     fecha = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    observaciones = db.Column(db.Text, nullable=True)
+    medio_pago = db.Column(db.String(50))
 
 
 class Venta(db.Model):
@@ -119,3 +119,13 @@ class DetalleVenta(db.Model):
     precio_por_caja = db.Column(db.Float, nullable=False)
     subtotal = db.Column(db.Float, nullable=False)
     costo_subtotal = db.Column(db.Float, nullable=False)
+
+class Caja(db.Model):
+    __tablename__ = 'caja'
+    id = db.Column(db.Integer, primary_key=True)
+    saldo_efectivo = db.Column(db.Float, default=0.0)
+    saldo_transferencia = db.Column(db.Float, default=0.0)
+    
+    @property
+    def total(self):
+        return (self.saldo_efectivo or 0.0) + (self.saldo_transferencia or 0.0)
