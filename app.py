@@ -4,7 +4,7 @@ import json
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from database import db, init_db
-from models import TipoCliente, Producto, PrecioProducto, Compra, Cliente, Venta, DetalleVenta, User
+from models import TipoCliente, Producto, PrecioProducto, Compra, Cliente, Venta, DetalleVenta, User, Caja
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev_key_super_secreta")
@@ -22,6 +22,16 @@ login_manager.login_message = "Por favor, inicia sesión para acceder."
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
+
+
+# --- FUNCIÓN AUXILIAR DE CAJA ---
+def obtener_o_crear_caja():
+    caja = Caja.query.first()
+    if not caja:
+        caja = Caja(saldo_efectivo=0.0, saldo_transferencia=0.0)
+        db.session.add(caja)
+        db.session.commit()
+    return caja
 
 
 # --- INICIALIZACIÓN DE DATOS (SEED) ---
@@ -118,6 +128,25 @@ def index():
         total_cajas_vendidas=total_cajas_vendidas,
         alertas_stock=alertas_stock
     )
+
+
+# ---------------------------------------------------------
+# GESTIÓN DE CAJA Y CAPITAL
+# ---------------------------------------------------------
+
+@app.route('/caja', methods=['GET', 'POST'])
+@login_required
+def caja():
+    caja_obj = obtener_o_crear_caja()
+
+    if request.method == 'POST':
+        caja_obj.saldo_efectivo = float(request.form.get('saldo_efectivo', 0.0))
+        caja_obj.saldo_transferencia = float(request.form.get('saldo_transferencia', 0.0))
+        db.session.commit()
+        flash("Saldos de caja actualizados correctamente.", "success")
+        return redirect(url_for('caja'))
+
+    return render_template('caja.html', caja=caja_obj)
 
 
 # ---------------------------------------------------------
@@ -250,7 +279,7 @@ def compras():
         cantidad_cajas = int(request.form.get('cantidad_cajas'))
         costo_por_caja = float(request.form.get('costo_por_caja'))
         proveedor = request.form.get('proveedor')
-        observaciones = request.form.get('observaciones')
+        medio_pago = request.form.get('medio_pago')
 
         costo_total = cantidad_cajas * costo_por_caja
 
@@ -260,13 +289,20 @@ def compras():
             costo_por_caja=costo_por_caja,
             costo_total=costo_total,
             proveedor=proveedor,
-            observaciones=observaciones
+            medio_pago=medio_pago
         )
         
         prod = db.session.get(Producto, producto_id)
         if prod:
             prod.stock_cajas += cantidad_cajas
             prod.costo_caja = costo_por_caja
+
+        # --- IMPACTO EN CAJA POR COMPRA (RESTA DEL CAPITAL) ---
+        caja_obj = obtener_o_crear_caja()
+        if medio_pago == 'Transferencia':
+            caja_obj.saldo_transferencia -= costo_total
+        else:
+            caja_obj.saldo_efectivo -= costo_total
 
         db.session.add(nueva_compra)
         db.session.commit()
@@ -403,7 +439,11 @@ def ventas():
         # Asignar los montos de pago según el método elegido
         nueva_venta.total = total_venta
         nueva_venta.costo_total = costo_total_venta
-        nueva_venta.ganancia = total_venta - costo_total_venta
+        ganancia_venta = total_venta - costo_total_venta
+        nueva_venta.ganancia = ganancia_venta
+
+        # --- IMPACTO EN CAJA POR VENTA (SUMA LA GANANCIA) ---
+        caja_obj = obtener_o_crear_caja()
 
         if observaciones == 'Mixto':
             monto_ef = float(request.form.get('monto_efectivo') or 0)
@@ -417,12 +457,24 @@ def ventas():
 
             nueva_venta.monto_efectivo = monto_ef
             nueva_venta.monto_transferencia = monto_tr
+
+            # Proporción de ganancia para cada saldo
+            if total_venta > 0:
+                prop_efectivo = monto_ef / total_venta
+                prop_transferencia = monto_tr / total_venta
+                caja_obj.saldo_efectivo += (ganancia_venta * prop_efectivo)
+                caja_obj.saldo_transferencia += (ganancia_venta * prop_transferencia)
+
         elif observaciones == 'Efectivo':
             nueva_venta.monto_efectivo = total_venta
             nueva_venta.monto_transferencia = 0.0
+            caja_obj.saldo_efectivo += ganancia_venta
+
         elif observaciones == 'Transferencia':
             nueva_venta.monto_efectivo = 0.0
             nueva_venta.monto_transferencia = total_venta
+            caja_obj.saldo_transferencia += ganancia_venta
+
         else:
             nueva_venta.monto_efectivo = 0.0
             nueva_venta.monto_transferencia = 0.0
@@ -662,6 +714,12 @@ def editar_venta(venta_id):
 
     clientes = Cliente.query.all()
     return render_template('editar_venta.html', venta=venta, clientes=clientes)
+
+@app.route('/reset-db-hard')
+def reset_db_hard():
+    db.drop_all()   # Borra todas las tablas de Supabase
+    db.create_all() # Las vuelve a crear vacías
+    return "Base de datos de Supabase borrada y recreada por completo."
 
 
 if __name__ == '__main__':
