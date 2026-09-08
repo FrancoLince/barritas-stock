@@ -484,9 +484,10 @@ def balance():
 
     ventas_filtradas = query.order_by(Venta.fecha.desc()).all()
 
+    # Se agrega 'Mixto' a la lista de métodos de pago cobrados
     ventas_cobradas = [
         v for v in ventas_filtradas 
-        if v.observaciones and ('Efectivo' in v.observaciones or 'Transferencia' in v.observaciones)
+        if v.observaciones and any(metodo in v.observaciones for metodo in ['Efectivo', 'Transferencia', 'Mixto'])
     ]
 
     ingresos = sum(v.total for v in ventas_cobradas)
@@ -501,7 +502,6 @@ def balance():
         filtro_actual=filtro,
         ventas=ventas_cobradas
     )
-
 
 @app.route('/historial')
 @login_required
