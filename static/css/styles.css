@@ -1881,6 +1881,22 @@ header:not(.topbar) h1 {
     letter-spacing: -0.5px;
     margin-top: 8px;
 }
+/* Contenedor dinámico de pago mixto */
+.pago-mixto-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+/* Ocultar/Mostrar con clases CSS limpias */
+.pago-mixto-container.hidden {
+    display: none;
+}
 
 /* Adaptación Responsive */
 @media (max-width: 900px) {
