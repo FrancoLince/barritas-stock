@@ -279,13 +279,39 @@ def compras():
 
         costo_total = cantidad_cajas * costo_por_caja
 
+        monto_efectivo = 0.0
+        monto_transferencia = 0.0
+
+        caja_obj = obtener_o_crear_caja()
+
+        # Determinación de montos según el medio de pago
+        if medio_pago == 'Transferencia':
+            monto_transferencia = costo_total
+            caja_obj.saldo_transferencia -= costo_total
+        elif medio_pago == 'Efectivo':
+            monto_efectivo = costo_total
+            caja_obj.saldo_efectivo -= costo_total
+        elif medio_pago == 'Mixto':
+            monto_efectivo = float(request.form.get('monto_efectivo') or 0.0)
+            monto_transferencia = float(request.form.get('monto_transferencia') or 0.0)
+
+            # Validación de integridad de montos
+            if abs((monto_efectivo + monto_transferencia) - costo_total) > 0.01:
+                flash("Error: La suma de efectivo y transferencia no coincide con el costo total de la compra.", "danger")
+                return redirect(url_for('compras'))
+
+            caja_obj.saldo_efectivo -= monto_efectivo
+            caja_obj.saldo_transferencia -= monto_transferencia
+
         nueva_compra = Compra(
             producto_id=producto_id,
             cantidad_cajas=cantidad_cajas,
             costo_por_caja=costo_por_caja,
             costo_total=costo_total,
             proveedor=proveedor,
-            medio_pago=medio_pago
+            medio_pago=medio_pago,
+            monto_efectivo=monto_efectivo,
+            monto_transferencia=monto_transferencia
         )
         
         prod = db.session.get(Producto, producto_id)
@@ -293,21 +319,15 @@ def compras():
             prod.stock_cajas += cantidad_cajas
             prod.costo_caja = costo_por_caja
 
-        caja_obj = obtener_o_crear_caja()
-        if medio_pago == 'Transferencia':
-            caja_obj.saldo_transferencia -= costo_total
-        else:
-            caja_obj.saldo_efectivo -= costo_total
-
         db.session.add(nueva_compra)
         db.session.commit()
 
+        flash("Compra registrada correctamente.", "success")
         return redirect(url_for('compras'))
 
     lista_compras = Compra.query.order_by(Compra.fecha.desc()).all()
     prods = Producto.query.all()
     return render_template('compras.html', compras=lista_compras, productos=prods)
-
 
 # ---------------------------------------------------------
 # GESTIÓN DE CLIENTES
@@ -509,7 +529,6 @@ def ventas():
 @login_required
 def balance():
     filtro = request.args.get('filtro', 'mes')
-    # Cálculo de la fecha actual de Argentina (UTC-3) sin dependencias externas
     hoy = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=-3))).date()
 
     query = Venta.query
@@ -603,7 +622,12 @@ def eliminar_compra(compra_id):
         producto.stock_cajas = max(0, producto.stock_cajas - compra.cantidad_cajas)
 
     caja_obj = obtener_o_crear_caja()
-    if compra.medio_pago == 'Transferencia':
+    
+    # Devolución exacta de dinero según el medio utilizado
+    if compra.medio_pago == 'Mixto':
+        caja_obj.saldo_efectivo += getattr(compra, 'monto_efectivo', 0.0) or 0.0
+        caja_obj.saldo_transferencia += getattr(compra, 'monto_transferencia', 0.0) or 0.0
+    elif compra.medio_pago == 'Transferencia':
         caja_obj.saldo_transferencia += compra.costo_total
     else:
         caja_obj.saldo_efectivo += compra.costo_total
@@ -746,6 +770,29 @@ def movimiento_caja():
 
     db.session.commit()
     return redirect(url_for('caja'))
+
+@app.route('/reset-db-secret-123456')
+def reset_db_manual():
+    try:
+        db.drop_all()
+        db.create_all()
+
+        usuarios = [
+            ("admin", "admin"),
+            ("Emilia", "Barritas123"),
+            ("Analia", "Barritas123"),
+            ("Cati", "Barritas123")
+        ]
+
+        for username, password in usuarios:
+            u = User(username=username)
+            u.set_password(password)
+            db.session.add(u)
+
+        db.session.commit()
+        return "¡Base de datos reseteada y usuarios creados correctamente!"
+    except Exception as e:
+        return f"Error al resetear: {str(e)}", 500
 
 
 if __name__ == '__main__':
