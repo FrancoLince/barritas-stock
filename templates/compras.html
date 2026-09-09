@@ -38,7 +38,20 @@
                     <option value="">Seleccione medio de pago...</option>
                     <option value="Efectivo">Efectivo</option>
                     <option value="Transferencia">Transferencia</option>
+                    <option value="Mixto">Mixto</option>
                 </select>
+            </div>
+        </div>
+
+        <!-- Campos adicionales desplegables para Pago Mixto -->
+        <div id="div_pago_mixto_compra" class="pago-mixto-container hidden">
+            <div class="form-group">
+                <label for="monto_efectivo">Monto en Efectivo ($):</label>
+                <input type="number" step="0.01" min="0" id="monto_efectivo" name="monto_efectivo" value="0">
+            </div>
+            <div class="form-group">
+                <label for="monto_transferencia">Monto en Transferencia ($):</label>
+                <input type="number" step="0.01" min="0" id="monto_transferencia" name="monto_transferencia" value="0">
             </div>
         </div>
 
@@ -69,14 +82,22 @@
                 {% for c in compras %}
                 <tr>
                     <td>{{ c.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
-                    <td><strong>{{ c.producto.nombre }}</strong> ({{ c.producto.sabor }})</td>
+                    <td><strong>{{ c.producto.nombre if c.producto else 'N/A' }}</strong> ({{ c.producto.sabor if c.producto else '-' }})</td>
                     <td>+{{ c.cantidad_cajas }} cajas</td>
                     <td>${{ "{:,.2f}".format(c.costo_por_caja | default(0)) }}</td>
                     <td><strong>${{ "{:,.2f}".format(c.costo_total | default(0)) }}</strong></td>
                     <td>{{ c.proveedor or '-' }}</td>
-                    <td>{{ c.medio_pago or '-' }}</td>
+                    <td>
+                        {% if c.medio_pago == 'Mixto' %}
+                            <span class="badge bg-warning text-dark">
+                                Mixto (EF: ${{ "{:,.2f}".format(c.monto_efectivo or 0) }} / TR: ${{ "{:,.2f}".format(c.monto_transferencia or 0) }})
+                            </span>
+                        {% else %}
+                            <span class="badge bg-info text-dark">{{ c.medio_pago or '-' }}</span>
+                        {% endif %}
+                    </td>
                     <td class="text-end">
-                        <form action="{{ url_for('eliminar_compra', compra_id=c.id) }}" method="POST" class="d-inline" data-confirm="¿Anular esta compra? Se descontará el stock agregando al producto.">
+                        <form action="{{ url_for('eliminar_compra', compra_id=c.id) }}" method="POST" class="d-inline" data-confirm="¿Anular esta compra? Se descontará el stock agregado al producto.">
                             <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ Anular</button>
                         </form>
                     </td>
