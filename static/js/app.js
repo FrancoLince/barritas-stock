@@ -13,8 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const infoStock = document.getElementById('info-stock');
     
     const formVenta = document.getElementById('formVenta');
+    const formCompra = document.querySelector('form[action*="compras"]');
     const btnAgregar = document.getElementById('btnAgregarItem');
     const observacionesSelect = document.getElementById('observaciones');
+    const medioPagoCompraSelect = document.getElementById('medio_pago');
     const filtroEstadoTabla = document.getElementById('filtroEstadoTabla');
     
     const sidebar = document.getElementById('sidebar');
@@ -74,12 +76,21 @@ document.addEventListener('DOMContentLoaded', () => {
         observacionesSelect.addEventListener('change', togglePagoMixto);
     }
 
+    // Toggle para Pago Mixto en módulo de Compras
+    if (medioPagoCompraSelect) {
+        medioPagoCompraSelect.addEventListener('change', togglePagoMixtoCompra);
+    }
+
     if (btnAgregar) {
         btnAgregar.addEventListener('click', agregarItemAlCarrito);
     }
 
     if (formVenta) {
         formVenta.addEventListener('submit', validarFormularioVenta);
+    }
+
+    if (formCompra) {
+        formCompra.addEventListener('submit', validarFormularioCompra);
     }
 
     if (filtroEstadoTabla) {
@@ -90,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         calcularTotalesYFiltrar();
     }
 
-    // Delegación de eventos para eliminar ítems del carrito (sin onclick inline)
+    // Delegación de eventos para eliminar ítems del carrito
     if (tablaCarrito) {
         tablaCarrito.addEventListener('click', (e) => {
             const btnEliminar = e.target.closest('.btn-eliminar-item');
@@ -112,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleSidebar);
     if (overlay) overlay.addEventListener('click', toggleSidebar);
 
-    // Cierre de alertas sin usar onclick inline
+    // Cierre de alertas
     document.querySelectorAll('.custom-alert .btn-close-custom').forEach(button => {
         button.addEventListener('click', (e) => {
             e.target.closest('.custom-alert')?.remove();
@@ -132,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ----------------------------------------------------
-// 5. FUNCIONES AUXILIARES DEL CARRITO Y VENTAS
+// 5. FUNCIONES AUXILIARES DE VENTAS Y COMPRAS
 // ----------------------------------------------------
 
 function togglePagoMixto() {
@@ -140,6 +151,27 @@ function togglePagoMixto() {
     const bloqueMixto = document.getElementById('bloquePagoMixto');
     if (bloqueMixto) {
         bloqueMixto.classList.toggle('d-none', obsSelect !== 'Mixto');
+    }
+}
+
+function togglePagoMixtoCompra() {
+    const medioPago = document.getElementById('medio_pago')?.value;
+    const divMixto = document.getElementById('div_pago_mixto_compra');
+    const inputEf = document.getElementById('monto_efectivo');
+    const inputTr = document.getElementById('monto_transferencia');
+
+    if (divMixto && inputEf && inputTr) {
+        if (medioPago === 'Mixto') {
+            divMixto.classList.remove('hidden');
+            inputEf.required = true;
+            inputTr.required = true;
+        } else {
+            divMixto.classList.add('hidden');
+            inputEf.required = false;
+            inputTr.required = false;
+            inputEf.value = '0';
+            inputTr.value = '0';
+        }
     }
 }
 
@@ -240,6 +272,23 @@ function validarFormularioVenta(e) {
         if (Math.abs((ef + tr) - totalVentaCalculado) > 0.01) {
             e.preventDefault();
             alert(`La suma del efectivo ($${ef}) y transferencia ($${tr}) debe dar exactamente el total de la venta ($${totalVentaCalculado.toFixed(2)}).`);
+        }
+    }
+}
+
+function validarFormularioCompra(e) {
+    const medioPago = document.getElementById('medio_pago')?.value;
+    if (medioPago === 'Mixto') {
+        const cajas = parseInt(document.getElementById('cantidad_cajas')?.value) || 0;
+        const costoCaja = parseFloat(document.getElementById('costo_por_caja')?.value) || 0;
+        const costoTotal = cajas * costoCaja;
+
+        const ef = parseFloat(document.getElementById('monto_efectivo')?.value) || 0;
+        const tr = parseFloat(document.getElementById('monto_transferencia')?.value) || 0;
+
+        if (Math.abs((ef + tr) - costoTotal) > 0.01) {
+            e.preventDefault();
+            alert(`La suma del efectivo ($${ef}) y transferencia ($${tr}) debe dar exactamente el total de la compra ($${costoTotal.toFixed(2)}).`);
         }
     }
 }
