@@ -97,7 +97,8 @@ class Compra(db.Model):
     proveedor = db.Column(db.String(100), nullable=True)
     fecha = db.Column(db.DateTime, default=obtener_fecha_argentina)
     medio_pago = db.Column(db.String(50))
-
+    monto_efectivo = db.Column(db.Float, default=0.0)
+    monto_transferencia = db.Column(db.Float, default=0.0)
 
 class Venta(db.Model):
     __tablename__ = 'venta'
