@@ -3,7 +3,7 @@ from database import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# Función auxiliar para la hora local de Argentina (UTC-3) sin dependencias externas
+# Función auxiliar para la hora local de Argentina (UTC-3)
 def obtener_fecha_argentina():
     return datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=-3))).replace(tzinfo=None)
 
@@ -45,10 +45,11 @@ class Producto(db.Model):
     contenido_caja = db.Column(db.Integer, nullable=False)
     stock_cajas = db.Column(db.Integer, default=0, nullable=False)
     stock_minimo = db.Column(db.Integer, default=5, nullable=False)
-    costo_caja = db.Column(db.Float, default=0.0, nullable=False)
+    # Cambio a Numeric para evitar imprecisiones decimales
+    costo_caja = db.Column(db.Numeric(10, 2), default=0.0, nullable=False)
 
     precios = db.relationship('PrecioProducto', backref='producto', cascade="all, delete-orphan", lazy=True)
-    compras = db.relationship('Compra', backref='producto', cascade="all, delete-orphan", lazy=True)
+    detalles_compra = db.relationship('DetalleCompra', backref='producto', cascade="all, delete-orphan", lazy=True)
     detalles_venta = db.relationship('DetalleVenta', backref='producto', cascade="all, delete-orphan", lazy=True)
 
     @property
@@ -66,7 +67,7 @@ class PrecioProducto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     producto_id = db.Column(db.Integer, db.ForeignKey('producto.id'), nullable=False)
     tipo_cliente_id = db.Column(db.Integer, db.ForeignKey('tipo_cliente.id'), nullable=False)
-    precio_caja = db.Column(db.Float, nullable=False)
+    precio_caja = db.Column(db.Numeric(10, 2), nullable=False)
 
     __table_args__ = (db.UniqueConstraint('producto_id', 'tipo_cliente_id', name='_prod_tipo_uc'),)
 
@@ -90,15 +91,26 @@ class Compra(db.Model):
     __tablename__ = 'compra'
 
     id = db.Column(db.Integer, primary_key=True)
-    producto_id = db.Column(db.Integer, db.ForeignKey('producto.id'), nullable=False)
-    cantidad_cajas = db.Column(db.Integer, nullable=False)
-    costo_por_caja = db.Column(db.Float, nullable=False)
-    costo_total = db.Column(db.Float, nullable=False)
     proveedor = db.Column(db.String(100), nullable=True)
     fecha = db.Column(db.DateTime, default=obtener_fecha_argentina)
+    costo_total = db.Column(db.Numeric(10, 2), default=0.0, nullable=False)
     medio_pago = db.Column(db.String(50))
-    monto_efectivo = db.Column(db.Float, default=0.0)
-    monto_transferencia = db.Column(db.Float, default=0.0)
+    monto_efectivo = db.Column(db.Numeric(10, 2), default=0.0)
+    monto_transferencia = db.Column(db.Numeric(10, 2), default=0.0)
+
+    detalles = db.relationship('DetalleCompra', backref='compra', cascade="all, delete-orphan", lazy=True)
+
+
+class DetalleCompra(db.Model):
+    __tablename__ = 'detalle_compra'
+
+    id = db.Column(db.Integer, primary_key=True)
+    compra_id = db.Column(db.Integer, db.ForeignKey('compra.id'), nullable=False)
+    producto_id = db.Column(db.Integer, db.ForeignKey('producto.id'), nullable=False)
+    cantidad_cajas = db.Column(db.Integer, nullable=False)
+    costo_por_caja = db.Column(db.Numeric(10, 2), nullable=False)
+    subtotal = db.Column(db.Numeric(10, 2), nullable=False)
+
 
 class Venta(db.Model):
     __tablename__ = 'venta'
@@ -106,13 +118,13 @@ class Venta(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
     fecha = db.Column(db.DateTime, default=obtener_fecha_argentina)
-    total = db.Column(db.Float, default=0.0, nullable=False)
-    costo_total = db.Column(db.Float, default=0.0, nullable=False)
-    ganancia = db.Column(db.Float, default=0.0, nullable=False)
+    total = db.Column(db.Numeric(10, 2), default=0.0, nullable=False)
+    costo_total = db.Column(db.Numeric(10, 2), default=0.0, nullable=False)
+    ganancia = db.Column(db.Numeric(10, 2), default=0.0, nullable=False)
     observaciones = db.Column(db.Text, nullable=True)
     detalles = db.relationship('DetalleVenta', backref='venta', cascade="all, delete-orphan", lazy=True)
-    monto_efectivo = db.Column(db.Float, default=0.0)
-    monto_transferencia = db.Column(db.Float, default=0.0)
+    monto_efectivo = db.Column(db.Numeric(10, 2), default=0.0)
+    monto_transferencia = db.Column(db.Numeric(10, 2), default=0.0)
 
 
 class DetalleVenta(db.Model):
@@ -122,17 +134,17 @@ class DetalleVenta(db.Model):
     venta_id = db.Column(db.Integer, db.ForeignKey('venta.id'), nullable=False)
     producto_id = db.Column(db.Integer, db.ForeignKey('producto.id'), nullable=False)
     cantidad_cajas = db.Column(db.Integer, nullable=False)
-    precio_por_caja = db.Column(db.Float, nullable=False)
-    subtotal = db.Column(db.Float, nullable=False)
-    costo_subtotal = db.Column(db.Float, nullable=False)
+    precio_por_caja = db.Column(db.Numeric(10, 2), nullable=False)
+    subtotal = db.Column(db.Numeric(10, 2), nullable=False)
+    costo_subtotal = db.Column(db.Numeric(10, 2), nullable=False)
 
 
 class Caja(db.Model):
     __tablename__ = 'caja'
 
     id = db.Column(db.Integer, primary_key=True)
-    saldo_efectivo = db.Column(db.Float, default=0.0)
-    saldo_transferencia = db.Column(db.Float, default=0.0)
+    saldo_efectivo = db.Column(db.Numeric(10, 2), default=0.0)
+    saldo_transferencia = db.Column(db.Numeric(10, 2), default=0.0)
     
     @property
     def total(self):
