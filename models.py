@@ -148,4 +148,6 @@ class Caja(db.Model):
     
     @property
     def total(self):
-        return (self.saldo_efectivo or 0.0) + (self.saldo_transferencia or 0.0)
+        efectivo = float(self.saldo_efectivo) if self.saldo_efectivo is not None else 0.0
+        transferencia = float(self.saldo_transferencia) if self.saldo_transferencia is not None else 0.0
+        return efectivo + transferencia
