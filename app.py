@@ -23,38 +23,56 @@ def load_user(user_id):
     return db.session.get(User, int(user_id))
 
 
-# --- FUNCIÓN AUXILIAR DE CAJA ---
+# --- FUNCIÓN AUXILIAR DE CAJA (CORREGIDA Y ROBUSTA) ---
 def obtener_o_crear_caja():
-    caja = Caja.query.first()
-    if not caja:
-        caja = Caja(saldo_efectivo=0.0, saldo_transferencia=0.0)
-        db.session.add(caja)
-        db.session.commit()
+    try:
+        caja = db.session.get(Caja, 1) or Caja.query.first()
+        if not caja:
+            caja = Caja(id=1, saldo_efectivo=0.0, saldo_transferencia=0.0)
+            db.session.add(caja)
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        caja = Caja.query.first()
+        if not caja:
+            caja = Caja(id=1, saldo_efectivo=0.0, saldo_transferencia=0.0)
+            db.session.add(caja)
+            db.session.commit()
+
+    # Garantizar que no retornemos saldos None a las plantillas
+    if caja.saldo_efectivo is None:
+        caja.saldo_efectivo = 0.0
+    if caja.saldo_transferencia is None:
+        caja.saldo_transferencia = 0.0
+
     return caja
 
 
 # --- INICIALIZACIÓN DE DATOS (SEED) ---
 with app.app_context():
-    tipos_defecto = ['Mayorista', 'Revendedor', 'Minorista', 'Distribuidoras grandes']
-    for nombre in tipos_defecto:
-        if not TipoCliente.query.filter_by(nombre=nombre).first():
-            db.session.add(TipoCliente(nombre=nombre))
-    
-    usuarios_iniciales = [
-        ("admin", "admin"),
-        ("Emilia", "Barritas123"),
-        ("Analia", "Barritas123"),
-        ("Cati", "Barritas123")
-    ]
-
-    for username, password in usuarios_iniciales:
-        usuario = User.query.filter_by(username=username).first()
-        if not usuario:
-            nuevo_usuario = User(username=username)
-            nuevo_usuario.set_password(password)
-            db.session.add(nuevo_usuario)
+    try:
+        tipos_defecto = ['Mayorista', 'Revendedor', 'Minorista', 'Distribuidoras grandes']
+        for nombre in tipos_defecto:
+            if not TipoCliente.query.filter_by(nombre=nombre).first():
+                db.session.add(TipoCliente(nombre=nombre))
         
-    db.session.commit()
+        usuarios_iniciales = [
+            ("admin", "admin"),
+            ("Emilia", "Barritas123"),
+            ("Analia", "Barritas123"),
+            ("Cati", "Barritas123")
+        ]
+
+        for username, password in usuarios_iniciales:
+            usuario = User.query.filter_by(username=username).first()
+            if not usuario:
+                nuevo_usuario = User(username=username)
+                nuevo_usuario.set_password(password)
+                db.session.add(nuevo_usuario)
+            
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
 
 
 # ---------------------------------------------------------
@@ -136,10 +154,14 @@ def caja():
     caja_obj = obtener_o_crear_caja()
 
     if request.method == 'POST':
-        caja_obj.saldo_efectivo = float(request.form.get('saldo_efectivo', 0.0))
-        caja_obj.saldo_transferencia = float(request.form.get('saldo_transferencia', 0.0))
-        db.session.commit()
-        flash("Saldos de caja actualizados correctamente.", "success")
+        try:
+            caja_obj.saldo_efectivo = float(request.form.get('saldo_efectivo', 0.0) or 0.0)
+            caja_obj.saldo_transferencia = float(request.form.get('saldo_transferencia', 0.0) or 0.0)
+            db.session.commit()
+            flash("Saldos de caja actualizados correctamente.", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error al actualizar la caja: {str(e)}", "danger")
         return redirect(url_for('caja'))
 
     return render_template('caja.html', caja=caja_obj)
@@ -150,7 +172,7 @@ def caja():
 def movimiento_caja():
     tipo_movimiento = request.form.get('tipo_movimiento')
     medio = request.form.get('medio')
-    monto = float(request.form.get('monto', 0.0))
+    monto = float(request.form.get('monto', 0.0) or 0.0)
 
     if monto <= 0:
         flash("El monto debe ser mayor a 0.", "warning")
@@ -187,10 +209,10 @@ def productos():
         nombre = request.form.get('nombre')
         marca = request.form.get('marca')
         sabor = request.form.get('sabor')
-        contenido_caja = int(request.form.get('contenido_caja', 12))
-        stock_cajas = int(request.form.get('stock_cajas', 0))
-        stock_minimo = int(request.form.get('stock_minimo', 0))
-        costo_caja = float(request.form.get('costo_caja', 0))
+        contenido_caja = int(request.form.get('contenido_caja', 12) or 12)
+        stock_cajas = int(request.form.get('stock_cajas', 0) or 0)
+        stock_minimo = int(request.form.get('stock_minimo', 0) or 0)
+        costo_caja = float(request.form.get('costo_caja', 0) or 0)
 
         nuevo_prod = Producto(
             nombre=nombre,
@@ -227,7 +249,7 @@ def productos():
 @app.route('/productos/<int:producto_id>/ajustar-stock', methods=['POST'])
 @login_required
 def ajustar_stock(producto_id):
-    nuevo_stock = int(request.form.get('nuevo_stock', 0))
+    nuevo_stock = int(request.form.get('nuevo_stock', 0) or 0)
     prod = db.session.get(Producto, producto_id) or db.first_or_404(Producto, producto_id)
     if nuevo_stock >= 0:
         prod.stock_cajas = nuevo_stock
@@ -246,10 +268,10 @@ def editar_producto(producto_id):
         prod.nombre = request.form.get('nombre')
         prod.marca = request.form.get('marca')
         prod.sabor = request.form.get('sabor')
-        prod.contenido_caja = int(request.form.get('contenido_caja', 12))
-        prod.stock_cajas = int(request.form.get('stock_cajas', 0))
-        prod.stock_minimo = int(request.form.get('stock_minimo', 5))
-        prod.costo_caja = float(request.form.get('costo_caja', 0))
+        prod.contenido_caja = int(request.form.get('contenido_caja', 12) or 12)
+        prod.stock_cajas = int(request.form.get('stock_cajas', 0) or 0)
+        prod.stock_minimo = int(request.form.get('stock_minimo', 5) or 5)
+        prod.costo_caja = float(request.form.get('costo_caja', 0) or 0)
 
         for t in tipos:
             precio_val = request.form.get(f'precio_tipo_{t.id}')
@@ -315,10 +337,8 @@ def stock():
 @login_required
 def compras():
     if request.method == 'POST':
-        # 1. Obtenemos el carrito codificado enviado por JavaScript
         carrito_json = request.form.get('carrito_data', '')
         
-        # Leemos el carrito JSON; si no existe, probamos leer un producto individual (fallback)
         items_compra = []
         if carrito_json:
             try:
@@ -326,7 +346,6 @@ def compras():
             except json.JSONDecodeError:
                 items_compra = []
 
-        # Fallback: si no viene carrito_json, intentamos leer inputs individuales
         if not items_compra:
             prod_id_raw = request.form.get('producto_id')
             cant_raw = request.form.get('cantidad_cajas')
@@ -339,7 +358,6 @@ def compras():
                     'costo_por_caja': float(costo_raw)
                 })
 
-        # Validar que al menos haya un ítem a comprar
         if not items_compra:
             flash("Por favor completa todos los campos requeridos (Producto, Cantidad y Costo) o agrega ítems al carrito.", "danger")
             return redirect(url_for('compras'))
@@ -347,7 +365,6 @@ def compras():
         proveedor = request.form.get('proveedor', '')
         medio_pago = request.form.get('medio_pago', 'Efectivo')
 
-        # 2. Calcular el costo total sumando todos los ítems del carrito
         costo_total = 0.0
         for item in items_compra:
             cant = int(item.get('cantidad_cajas') or item.get('cantidad', 0))
@@ -358,7 +375,6 @@ def compras():
         monto_transferencia = 0.0
         caja_obj = obtener_o_crear_caja()
 
-        # 3. Lógica de Medios de Pago
         if medio_pago == 'Transferencia':
             monto_transferencia = costo_total
             caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) - costo_total
@@ -376,7 +392,6 @@ def compras():
             caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) - monto_efectivo
             caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) - monto_transferencia
 
-        # 4. Registrar la Compra
         nueva_compra = Compra(
             proveedor=proveedor,
             medio_pago=medio_pago,
@@ -387,7 +402,6 @@ def compras():
         db.session.add(nueva_compra)
         db.session.flush()
 
-        # 5. Guardar los Detalles e incrementar Stock por cada ítem
         for item in items_compra:
             p_id = int(item.get('producto_id'))
             cant = int(item.get('cantidad_cajas') or item.get('cantidad', 0))
@@ -412,7 +426,6 @@ def compras():
         flash("Compra registrada correctamente.", "success")
         return redirect(url_for('compras'))
 
-    # Petición GET
     lista_compras = Compra.query.options(
         selectinload(Compra.detalles).joinedload(DetalleCompra.producto)
     ).order_by(Compra.fecha.desc()).all()
@@ -426,13 +439,11 @@ def compras():
 def eliminar_compra(compra_id):
     compra = db.session.get(Compra, compra_id) or db.first_or_404(Compra, compra_id)
     
-    # Restar el stock de cada detalle eliminado
     for d in compra.detalles:
         producto = db.session.get(Producto, d.producto_id)
         if producto:
             producto.stock_cajas = max(0, producto.stock_cajas - d.cantidad_cajas)
 
-    # Devolver dinero a la caja
     caja_obj = obtener_o_crear_caja()
     costo_tot = float(compra.costo_total or 0)
     
@@ -668,7 +679,6 @@ def editar_venta(venta_id):
         try:
             caja_obj = obtener_o_crear_caja()
 
-            # Revertir impacto previo si aplicaba
             v_total = float(venta.total or 0)
             v_ganancia = float(venta.ganancia or 0)
 
@@ -686,8 +696,8 @@ def editar_venta(venta_id):
             nuevo_costo_total = 0.0
 
             for d in venta.detalles:
-                nueva_cant = int(request.form.get(f'cantidad_{d.id}', d.cantidad_cajas))
-                nuevo_precio = float(request.form.get(f'precio_{d.id}', d.precio_por_caja))
+                nueva_cant = int(request.form.get(f'cantidad_{d.id}', d.cantidad_cajas) or d.cantidad_cajas)
+                nuevo_precio = float(request.form.get(f'precio_{d.id}', d.precio_por_caja) or d.precio_por_caja)
 
                 producto = db.session.get(Producto, d.producto_id)
                 if producto:
@@ -866,8 +876,33 @@ def historial():
     return render_template('historial.html', movimientos=movimientos)
 
 
+@app.route('/reset-db-secret-123456')
+@login_required
+def reset_db_manual():
+    if current_user.username != 'admin':
+        return "Acceso no autorizado", 403
+        
+    try:
+        db.drop_all()
+        db.create_all()
 
+        usuarios = [
+            ("admin", "admin"),
+            ("Emilia", "Barritas123"),
+            ("Analia", "Barritas123"),
+            ("Cati", "Barritas123")
+        ]
 
+        for username, password in usuarios:
+            u = User(username=username)
+            u.set_password(password)
+            db.session.add(u)
+
+        db.session.commit()
+        return "¡Base de datos reseteada y usuarios creados correctamente!"
+    except Exception as e:
+        db.session.rollback()
+        return f"Error al resetear: {str(e)}", 500
 
 
 if __name__ == '__main__':
