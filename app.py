@@ -876,34 +876,6 @@ def historial():
     return render_template('historial.html', movimientos=movimientos)
 
 
-@app.route('/reset-db-secret-123456')
-@login_required
-def reset_db_manual():
-    if current_user.username != 'admin':
-        return "Acceso no autorizado", 403
-        
-    try:
-        db.drop_all()
-        db.create_all()
-
-        usuarios = [
-            ("admin", "admin"),
-            ("Emilia", "Barritas123"),
-            ("Analia", "Barritas123"),
-            ("Cati", "Barritas123")
-        ]
-
-        for username, password in usuarios:
-            u = User(username=username)
-            u.set_password(password)
-            db.session.add(u)
-
-        db.session.commit()
-        return "¡Base de datos reseteada y usuarios creados correctamente!"
-    except Exception as e:
-        db.session.rollback()
-        return f"Error al resetear: {str(e)}", 500
-
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
