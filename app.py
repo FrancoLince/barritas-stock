@@ -23,7 +23,19 @@ def load_user(user_id):
     return db.session.get(User, int(user_id))
 
 
-# --- FUNCIÓN AUXILIAR DE CAJA (CORREGIDA Y ROBUSTA) ---
+# ---------------------------------------------------------
+# ENDPOINT DE SALUD / MONITOREO DE SERVIDOR
+# ---------------------------------------------------------
+@app.route('/health')
+def health():
+    try:
+        db.session.execute(db.text('SELECT 1'))
+        return jsonify({'status': 'ok', 'database': 'connected'}), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'reason': str(e)}), 500
+
+
+# --- FUNCIÓN AUXILIAR DE CAJA ---
 def obtener_o_crear_caja():
     try:
         caja = db.session.get(Caja, 1) or Caja.query.first()
@@ -39,7 +51,6 @@ def obtener_o_crear_caja():
             db.session.add(caja)
             db.session.commit()
 
-    # Garantizar que no retornemos saldos None a las plantillas
     if caja.saldo_efectivo is None:
         caja.saldo_efectivo = 0.0
     if caja.saldo_transferencia is None:
@@ -600,6 +611,7 @@ def ventas():
 
             caja_obj = obtener_o_crear_caja()
 
+            # Ingreso del DINERO REAL COBRADO a la Caja
             if observaciones == 'Mixto':
                 monto_ef = float(request.form.get('monto_efectivo') or 0)
                 monto_tr = float(request.form.get('monto_transferencia') or 0)
@@ -612,21 +624,18 @@ def ventas():
                 nueva_venta.monto_efectivo = monto_ef
                 nueva_venta.monto_transferencia = monto_tr
 
-                if total_venta > 0:
-                    prop_efectivo = monto_ef / total_venta
-                    prop_transferencia = monto_tr / total_venta
-                    caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + (ganancia_venta * prop_efectivo)
-                    caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + (ganancia_venta * prop_transferencia)
+                caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + monto_ef
+                caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + monto_tr
 
             elif observaciones == 'Efectivo':
                 nueva_venta.monto_efectivo = total_venta
                 nueva_venta.monto_transferencia = 0.0
-                caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + ganancia_venta
+                caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + total_venta
 
             elif observaciones == 'Transferencia':
                 nueva_venta.monto_efectivo = 0.0
                 nueva_venta.monto_transferencia = total_venta
-                caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + ganancia_venta
+                caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + total_venta
 
             else:
                 nueva_venta.monto_efectivo = 0.0
@@ -679,14 +688,10 @@ def editar_venta(venta_id):
         try:
             caja_obj = obtener_o_crear_caja()
 
-            v_total = float(venta.total or 0)
-            v_ganancia = float(venta.ganancia or 0)
-
-            if venta.observaciones in ['Efectivo', 'Transferencia', 'Mixto'] and v_total > 0:
-                prop_ef_old = float(venta.monto_efectivo or 0) / v_total
-                prop_tr_old = float(venta.monto_transferencia or 0) / v_total
-                caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) - (v_ganancia * prop_ef_old)
-                caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) - (v_ganancia * prop_tr_old)
+            # Revertir el dinero cobrado anteriormente
+            if venta.observaciones in ['Efectivo', 'Transferencia', 'Mixto']:
+                caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) - float(venta.monto_efectivo or 0)
+                caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) - float(venta.monto_transferencia or 0)
 
             venta.cliente_id = int(request.form.get('cliente_id'))
             observaciones = request.form.get('observaciones')
@@ -734,20 +739,19 @@ def editar_venta(venta_id):
 
                 venta.monto_efectivo = monto_ef
                 venta.monto_transferencia = monto_tr
-                if nuevo_total > 0:
-                    prop_ef = monto_ef / nuevo_total
-                    prop_tr = monto_tr / nuevo_total
-                    caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + (nueva_ganancia * prop_ef)
-                    caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + (nueva_ganancia * prop_tr)
+                caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + monto_ef
+                caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + monto_tr
 
             elif observaciones == 'Efectivo':
                 venta.monto_efectivo = nuevo_total
                 venta.monto_transferencia = 0.0
-                caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + nueva_ganancia
+                caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + nuevo_total
+
             elif observaciones == 'Transferencia':
                 venta.monto_efectivo = 0.0
                 venta.monto_transferencia = nuevo_total
-                caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + nueva_ganancia
+                caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + nuevo_total
+
             else:
                 venta.monto_efectivo = 0.0
                 venta.monto_transferencia = 0.0
@@ -776,14 +780,9 @@ def eliminar_venta(venta_id):
                 producto.stock_cajas += detalle.cantidad_cajas
 
     caja_obj = obtener_o_crear_caja()
-    v_total = float(venta.total or 0)
-    v_ganancia = float(venta.ganancia or 0)
-
-    if venta.observaciones in ['Efectivo', 'Transferencia', 'Mixto'] and v_total > 0:
-        prop_ef = float(venta.monto_efectivo or 0) / v_total
-        prop_tr = float(venta.monto_transferencia or 0) / v_total
-        caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) - (v_ganancia * prop_ef)
-        caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) - (v_ganancia * prop_tr)
+    if venta.observaciones in ['Efectivo', 'Transferencia', 'Mixto']:
+        caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) - float(venta.monto_efectivo or 0)
+        caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) - float(venta.monto_transferencia or 0)
 
     db.session.delete(venta)
     db.session.commit()
@@ -875,6 +874,54 @@ def historial():
 
     return render_template('historial.html', movimientos=movimientos)
 
+
+# ---------------------------------------------------------
+# ADMINISTRACIÓN Y RESETEO PROTEGIDO
+# ---------------------------------------------------------
+
+@app.route('/reset-db-secret-123456')
+@login_required
+def reset_db_manual():
+    if os.getenv("ENABLE_DB_RESET", "false").lower() != "true":
+        return "El reseteo de base de datos está desactivado en este entorno.", 403
+
+    if current_user.username != 'admin':
+        return "Acceso no autorizado", 403
+        
+    try:
+        db.drop_all()
+        db.create_all()
+
+        usuarios = [
+            ("admin", "admin"),
+            ("Emilia", "Barritas123"),
+            ("Analia", "Barritas123"),
+            ("Cati", "Barritas123")
+        ]
+
+        for username, password in usuarios:
+            u = User(username=username)
+            u.set_password(password)
+            db.session.add(u)
+
+        db.session.commit()
+        return "¡Base de datos reseteada y usuarios creados correctamente!"
+    except Exception as e:
+        db.session.rollback()
+        return f"Error al resetear: {str(e)}", 500
+
+
+# ---------------------------------------------------------
+# MANEJADORES DE ERRORES HTTP
+# ---------------------------------------------------------
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template('500.html'), 500
 
 
 if __name__ == '__main__':
