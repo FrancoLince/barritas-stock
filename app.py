@@ -5,7 +5,10 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy.orm import joinedload, selectinload
 from database import db, init_db
-from models import TipoCliente, Producto, PrecioProducto, Compra, DetalleCompra, Cliente, Venta, DetalleVenta, User, Caja
+from models import (
+    TipoCliente, Producto, PrecioProducto, Compra, DetalleCompra, 
+    Cliente, Venta, DetalleVenta, User, Caja, MovimientoCaja
+)
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev_key_super_secreta")
@@ -35,7 +38,7 @@ def health():
         return jsonify({'status': 'error', 'reason': str(e)}), 500
 
 
-# --- FUNCIÓN AUXILIAR DE CAJA ---
+# --- FUNCIONES AUXILIARES DE CAJA ---
 def obtener_o_crear_caja():
     try:
         caja = db.session.get(Caja, 1) or Caja.query.first()
@@ -57,6 +60,18 @@ def obtener_o_crear_caja():
         caja.saldo_transferencia = 0.0
 
     return caja
+
+
+def registrar_movimiento_caja(tipo, medio, monto, concepto):
+    """Registra una transacción en el historial de auditoría de caja."""
+    if monto and float(monto) > 0:
+        mov = MovimientoCaja(
+            tipo=tipo,
+            medio=medio,
+            monto=float(monto),
+            concepto=concepto
+        )
+        db.session.add(mov)
 
 
 # --- INICIALIZACIÓN DE DATOS (SEED) ---
@@ -166,8 +181,22 @@ def caja():
 
     if request.method == 'POST':
         try:
-            caja_obj.saldo_efectivo = float(request.form.get('saldo_efectivo', 0.0) or 0.0)
-            caja_obj.saldo_transferencia = float(request.form.get('saldo_transferencia', 0.0) or 0.0)
+            nuevo_ef = float(request.form.get('saldo_efectivo', 0.0) or 0.0)
+            nuevo_tr = float(request.form.get('saldo_transferencia', 0.0) or 0.0)
+
+            diff_ef = nuevo_ef - float(caja_obj.saldo_efectivo or 0)
+            diff_tr = nuevo_tr - float(caja_obj.saldo_transferencia or 0)
+
+            if diff_ef != 0:
+                tipo = 'Ingreso' if diff_ef > 0 else 'Egreso'
+                registrar_movimiento_caja(tipo, 'Efectivo', abs(diff_ef), 'Ajuste Manual Absoluto')
+
+            if diff_tr != 0:
+                tipo = 'Ingreso' if diff_tr > 0 else 'Egreso'
+                registrar_movimiento_caja(tipo, 'Transferencia', abs(diff_tr), 'Ajuste Manual Absoluto')
+
+            caja_obj.saldo_efectivo = nuevo_ef
+            caja_obj.saldo_transferencia = nuevo_tr
             db.session.commit()
             flash("Saldos de caja actualizados correctamente.", "success")
         except Exception as e:
@@ -175,7 +204,8 @@ def caja():
             flash(f"Error al actualizar la caja: {str(e)}", "danger")
         return redirect(url_for('caja'))
 
-    return render_template('caja.html', caja=caja_obj)
+    movimientos = MovimientoCaja.query.order_by(MovimientoCaja.fecha.desc()).limit(50).all()
+    return render_template('caja.html', caja=caja_obj, movimientos=movimientos)
 
 
 @app.route('/caja/movimiento', methods=['POST'])
@@ -190,20 +220,25 @@ def movimiento_caja():
         return redirect(url_for('caja'))
 
     caja_obj = obtener_o_crear_caja()
+    medio_str = 'Efectivo' if medio == 'efectivo' else 'Transferencia'
 
     if tipo_movimiento == 'sumar':
         if medio == 'efectivo':
             caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + monto
         elif medio == 'transferencia':
             caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + monto
-        flash(f"Se sumaron ${monto:,.2f} al saldo de {medio}.", "success")
+        
+        registrar_movimiento_caja('Ingreso', medio_str, monto, 'Movimiento Rápido (+)')
+        flash(f"Se sumaron ${monto:,.2f} al saldo de {medio_str}.", "success")
 
     elif tipo_movimiento == 'restar':
         if medio == 'efectivo':
             caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) - monto
         elif medio == 'transferencia':
             caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) - monto
-        flash(f"Se restaron ${monto:,.2f} del saldo de {medio}.", "warning")
+        
+        registrar_movimiento_caja('Egreso', medio_str, monto, 'Movimiento Rápido (-)')
+        flash(f"Se restaron ${monto:,.2f} del saldo de {medio_str}.", "warning")
 
     db.session.commit()
     return redirect(url_for('caja'))
@@ -432,6 +467,12 @@ def compras():
                 )
                 db.session.add(detalle)
 
+        # Registrar el movimiento de egreso en el historial
+        if monto_efectivo > 0:
+            registrar_movimiento_caja('Egreso', 'Efectivo', monto_efectivo, f'Compra #{nueva_compra.id}')
+        if monto_transferencia > 0:
+            registrar_movimiento_caja('Egreso', 'Transferencia', monto_transferencia, f'Compra #{nueva_compra.id}')
+
         db.session.commit()
 
         flash("Compra registrada correctamente.", "success")
@@ -459,12 +500,18 @@ def eliminar_compra(compra_id):
     costo_tot = float(compra.costo_total or 0)
     
     if compra.medio_pago == 'Mixto':
-        caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + float(compra.monto_efectivo or 0.0)
-        caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + float(compra.monto_transferencia or 0.0)
+        ef = float(compra.monto_efectivo or 0.0)
+        tr = float(compra.monto_transferencia or 0.0)
+        caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + ef
+        caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + tr
+        registrar_movimiento_caja('Ingreso', 'Efectivo', ef, f'Anulación Compra #{compra.id}')
+        registrar_movimiento_caja('Ingreso', 'Transferencia', tr, f'Anulación Compra #{compra.id}')
     elif compra.medio_pago == 'Transferencia':
         caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + costo_tot
+        registrar_movimiento_caja('Ingreso', 'Transferencia', costo_tot, f'Anulación Compra #{compra.id}')
     else:
         caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + costo_tot
+        registrar_movimiento_caja('Ingreso', 'Efectivo', costo_tot, f'Anulación Compra #{compra.id}')
 
     db.session.delete(compra)
     db.session.commit()
@@ -611,7 +658,6 @@ def ventas():
 
             caja_obj = obtener_o_crear_caja()
 
-            # Ingreso del DINERO REAL COBRADO a la Caja
             if observaciones == 'Mixto':
                 monto_ef = float(request.form.get('monto_efectivo') or 0)
                 monto_tr = float(request.form.get('monto_transferencia') or 0)
@@ -626,16 +672,21 @@ def ventas():
 
                 caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + monto_ef
                 caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + monto_tr
+                
+                registrar_movimiento_caja('Ingreso', 'Efectivo', monto_ef, f'Venta #{nueva_venta.id}')
+                registrar_movimiento_caja('Ingreso', 'Transferencia', monto_tr, f'Venta #{nueva_venta.id}')
 
             elif observaciones == 'Efectivo':
                 nueva_venta.monto_efectivo = total_venta
                 nueva_venta.monto_transferencia = 0.0
                 caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + total_venta
+                registrar_movimiento_caja('Ingreso', 'Efectivo', total_venta, f'Venta #{nueva_venta.id}')
 
             elif observaciones == 'Transferencia':
                 nueva_venta.monto_efectivo = 0.0
                 nueva_venta.monto_transferencia = total_venta
                 caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + total_venta
+                registrar_movimiento_caja('Ingreso', 'Transferencia', total_venta, f'Venta #{nueva_venta.id}')
 
             else:
                 nueva_venta.monto_efectivo = 0.0
@@ -688,10 +739,16 @@ def editar_venta(venta_id):
         try:
             caja_obj = obtener_o_crear_caja()
 
-            # Revertir el dinero cobrado anteriormente
             if venta.observaciones in ['Efectivo', 'Transferencia', 'Mixto']:
-                caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) - float(venta.monto_efectivo or 0)
-                caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) - float(venta.monto_transferencia or 0)
+                ef_prev = float(venta.monto_efectivo or 0)
+                tr_prev = float(venta.monto_transferencia or 0)
+                caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) - ef_prev
+                caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) - tr_prev
+                
+                if ef_prev > 0:
+                    registrar_movimiento_caja('Egreso', 'Efectivo', ef_prev, f'Edición Venta #{venta.id} (Reversión)')
+                if tr_prev > 0:
+                    registrar_movimiento_caja('Egreso', 'Transferencia', tr_prev, f'Edición Venta #{venta.id} (Reversión)')
 
             venta.cliente_id = int(request.form.get('cliente_id'))
             observaciones = request.form.get('observaciones')
@@ -741,16 +798,21 @@ def editar_venta(venta_id):
                 venta.monto_transferencia = monto_tr
                 caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + monto_ef
                 caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + monto_tr
+                
+                registrar_movimiento_caja('Ingreso', 'Efectivo', monto_ef, f'Edición Venta #{venta.id}')
+                registrar_movimiento_caja('Ingreso', 'Transferencia', monto_tr, f'Edición Venta #{venta.id}')
 
             elif observaciones == 'Efectivo':
                 venta.monto_efectivo = nuevo_total
                 venta.monto_transferencia = 0.0
                 caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + nuevo_total
+                registrar_movimiento_caja('Ingreso', 'Efectivo', nuevo_total, f'Edición Venta #{venta.id}')
 
             elif observaciones == 'Transferencia':
                 venta.monto_efectivo = 0.0
                 venta.monto_transferencia = nuevo_total
                 caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + nuevo_total
+                registrar_movimiento_caja('Ingreso', 'Transferencia', nuevo_total, f'Edición Venta #{venta.id}')
 
             else:
                 venta.monto_efectivo = 0.0
@@ -781,8 +843,15 @@ def eliminar_venta(venta_id):
 
     caja_obj = obtener_o_crear_caja()
     if venta.observaciones in ['Efectivo', 'Transferencia', 'Mixto']:
-        caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) - float(venta.monto_efectivo or 0)
-        caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) - float(venta.monto_transferencia or 0)
+        m_ef = float(venta.monto_efectivo or 0)
+        m_tr = float(venta.monto_transferencia or 0)
+        caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) - m_ef
+        caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) - m_tr
+        
+        if m_ef > 0:
+            registrar_movimiento_caja('Egreso', 'Efectivo', m_ef, f'Anulación Venta #{venta.id}')
+        if m_tr > 0:
+            registrar_movimiento_caja('Egreso', 'Transferencia', m_tr, f'Anulación Venta #{venta.id}')
 
     db.session.delete(venta)
     db.session.commit()
