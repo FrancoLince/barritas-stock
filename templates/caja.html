@@ -65,7 +65,7 @@
 </div>
 
 <!-- SECCIÓN 2: AJUSTE / REINICIALIZACIÓN DE SALDOS TOTALES -->
-<div class="erp-card">
+<div class="erp-card mb-4">
     <h5 class="mb-1 fw-bold">Ajuste Manual Absoluto</h5>
     <p class="text-muted small mb-3">Usá esta sección para redefinir directamente los valores finales de efectivo o transferencia.</p>
     
@@ -84,5 +84,54 @@
             <button type="submit" class="btn btn-outline-primary">Actualizar Saldos Directos</button>
         </div>
     </form>
+</div>
+
+<!-- SECCIÓN 3: HISTORIAL DE MOVIMIENTOS DE CAJA -->
+<div class="erp-card">
+    <h5 class="mb-3 fw-bold">Historial Reciente de Caja</h5>
+    <div class="table-responsive">
+        <table class="table table-striped align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Fecha / Hora</th>
+                    <th>Tipo</th>
+                    <th>Medio</th>
+                    <th>Concepto</th>
+                    <th class="text-end">Monto ($)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in movimientos %}
+                <tr>
+                    <td>
+                        <small class="text-muted">
+                            {% if m.fecha.strftime is defined %}
+                                {{ m.fecha.strftime('%d/%m/%Y %H:%M') }}
+                            {% else %}
+                                {{ m.fecha }}
+                            {% endif %}
+                        </small>
+                    </td>
+                    <td>
+                        {% if m.tipo == 'Ingreso' %}
+                            <span class="badge bg-success">Ingreso</span>
+                        {% else %}
+                            <span class="badge bg-danger">Egreso</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ m.medio }}</td>
+                    <td><strong>{{ m.concepto }}</strong></td>
+                    <td class="text-end fw-bold {{ 'text-success' if m.tipo == 'Ingreso' else 'text-danger' }}">
+                        {{ '+' if m.tipo == 'Ingreso' else '-' }}${{ "{:,.2f}".format(m.monto | float) }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-3">No hay movimientos registrados en la caja.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}
