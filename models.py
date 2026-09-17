@@ -151,3 +151,12 @@ class Caja(db.Model):
         efectivo = float(self.saldo_efectivo) if self.saldo_efectivo is not None else 0.0
         transferencia = float(self.saldo_transferencia) if self.saldo_transferencia is not None else 0.0
         return efectivo + transferencia
+class MovimientoCaja(db.Model):
+    __tablename__ = 'movimiento_caja'
+
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.DateTime, default=obtener_fecha_argentina)
+    tipo = db.Column(db.String(20), nullable=False)  # 'Ingreso', 'Egreso', 'Ajuste'
+    medio = db.Column(db.String(30), nullable=False) # 'Efectivo', 'Transferencia'
+    monto = db.Column(db.Numeric(10, 2), nullable=False)
+    concepto = db.Column(db.String(200), nullable=False) # Ej: "Venta #15", "Movimiento manual", "Compra #4"
