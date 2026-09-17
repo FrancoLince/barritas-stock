@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block title %}Página no encontrada | Barritas ERP{% endblock %}
+
+{% block content %}
+<div class="erp-card text-center py-5">
+    <h1 class="display-1 text-muted">404</h1>
+    <h3>Página no encontrada</h3>
+    <p class="text-muted">La sección que estás buscando no existe o fue movida.</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary mt-3">Volver al Inicio</a>
+</div>
+{% endblock %}
