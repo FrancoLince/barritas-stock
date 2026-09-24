@@ -256,9 +256,16 @@ def productos():
         marca = request.form.get('marca')
         sabor = request.form.get('sabor')
         contenido_caja = int(request.form.get('contenido_caja', 12) or 12)
-        stock_cajas = int(request.form.get('stock_cajas', 0) or 0)
-        stock_minimo = int(request.form.get('stock_minimo', 0) or 0)
-        costo_caja = float(request.form.get('costo_caja', 0) or 0)
+
+        # Validación segura para campos opcionales
+        stk_raw = request.form.get('stock_cajas')
+        stock_cajas = int(stk_raw) if stk_raw and stk_raw.strip() != "" else 0
+
+        stk_min_raw = request.form.get('stock_minimo')
+        stock_minimo = int(stk_min_raw) if stk_min_raw and stk_min_raw.strip() != "" else 0
+
+        costo_raw = request.form.get('costo_caja')
+        costo_caja = float(costo_raw) if costo_raw and costo_raw.strip() != "" else 0.0
 
         nuevo_prod = Producto(
             nombre=nombre,
@@ -275,7 +282,7 @@ def productos():
         tipos = TipoCliente.query.all()
         for t in tipos:
             precio_val = request.form.get(f'precio_tipo_{t.id}')
-            if precio_val:
+            if precio_val and precio_val.strip() != "":
                 p_prod = PrecioProducto(
                     producto_id=nuevo_prod.id,
                     tipo_cliente_id=t.id,
@@ -315,13 +322,19 @@ def editar_producto(producto_id):
         prod.marca = request.form.get('marca')
         prod.sabor = request.form.get('sabor')
         prod.contenido_caja = int(request.form.get('contenido_caja', 12) or 12)
-        prod.stock_cajas = int(request.form.get('stock_cajas', 0) or 0)
-        prod.stock_minimo = int(request.form.get('stock_minimo', 5) or 5)
-        prod.costo_caja = float(request.form.get('costo_caja', 0) or 0)
+        
+        stk_raw = request.form.get('stock_cajas')
+        prod.stock_cajas = int(stk_raw) if stk_raw and stk_raw.strip() != "" else 0
+
+        stk_min_raw = request.form.get('stock_minimo')
+        prod.stock_minimo = int(stk_min_raw) if stk_min_raw and stk_min_raw.strip() != "" else 0
+
+        costo_raw = request.form.get('costo_caja')
+        prod.costo_caja = float(costo_raw) if costo_raw and costo_raw.strip() != "" else 0.0
 
         for t in tipos:
             precio_val = request.form.get(f'precio_tipo_{t.id}')
-            if precio_val:
+            if precio_val and precio_val.strip() != "":
                 precio_obj = PrecioProducto.query.filter_by(
                     producto_id=prod.id, 
                     tipo_cliente_id=t.id
