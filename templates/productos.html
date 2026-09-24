@@ -29,15 +29,15 @@
             </div>
             <div class="form-group">
                 <label for="stock_cajas">Stock Inicial (Cajas):</label>
-                <input type="number" id="stock_cajas" name="stock_cajas" value="0" min="0" required>
+                <input type="number" id="stock_cajas" name="stock_cajas" placeholder="0 (Opcional)" min="0">
             </div>
             <div class="form-group">
                 <label for="stock_minimo">Stock Mínimo (Cajas):</label>
-                <input type="number" id="stock_minimo" name="stock_minimo" value="0" min="0" required>
+                <input type="number" id="stock_minimo" name="stock_minimo" placeholder="0 (Opcional)" min="0">
             </div>
             <div class="form-group">
                 <label for="costo_caja">Costo de compra por caja ($):</label>
-                <input type="number" id="costo_caja" step="0.01" name="costo_caja" placeholder="7000" required>
+                <input type="number" id="costo_caja" step="0.01" name="costo_caja" placeholder="7000 (Opcional)">
             </div>
         </div>
 
@@ -46,7 +46,7 @@
             {% for tipo in tipos_cliente %}
             <div class="form-group">
                 <label for="precio_tipo_{{ tipo.id }}">Precio {{ tipo.nombre }} ($):</label>
-                <input type="number" id="precio_tipo_{{ tipo.id }}" step="0.01" name="precio_tipo_{{ tipo.id }}" placeholder="0.00" required>
+                <input type="number" id="precio_tipo_{{ tipo.id }}" step="0.01" name="precio_tipo_{{ tipo.id }}" placeholder="0.00 (Opcional)">
             </div>
             {% endfor %}
         </div>
