@@ -73,17 +73,18 @@
             </div>
             <div class="form-group">
                 <label for="medio_pago">Medio de Pago:</label>
-                <!-- Se agrega onchange para ejecutar la función de JS -->
                 <select id="medio_pago" name="medio_pago" class="form-control" onchange="togglePagoMixtoCompra()" required>
                     <option value="">Seleccione medio de pago...</option>
                     <option value="Efectivo">Efectivo</option>
                     <option value="Transferencia">Transferencia</option>
                     <option value="Mixto">Mixto</option>
+                    <option value="Debiendo">Debiendo (A crédito)</option>
+                    <option value="Pendiente">Pendiente de pago</option>
                 </select>
             </div>
         </div>
 
-        <!-- Campos para Pago Mixto (Alineados con los IDs esperados en app.js) -->
+        <!-- Campos para Pago Mixto -->
         <div id="div_pago_mixto_compra" class="pago-mixto-container mt-3" style="display: none;">
             <div class="form-grid">
                 <div class="form-group">
@@ -145,6 +146,10 @@
                             <span class="badge bg-warning text-dark">
                                 Mixto (EF: ${{ "{:,.2f}".format(c.monto_efectivo or 0) }} / TR: ${{ "{:,.2f}".format(c.monto_transferencia or 0) }})
                             </span>
+                        {% elif c.medio_pago == 'Debiendo' %}
+                            <span class="badge bg-danger">Debiendo</span>
+                        {% elif c.medio_pago == 'Pendiente' %}
+                            <span class="badge bg-secondary">Pendiente</span>
                         {% else %}
                             <span class="badge bg-info text-dark">{{ c.medio_pago or '-' }}</span>
                         {% endif %}
