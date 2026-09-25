@@ -257,7 +257,6 @@ def productos():
         sabor = request.form.get('sabor')
         contenido_caja = int(request.form.get('contenido_caja', 12) or 12)
 
-        # Validación segura para campos opcionales
         stk_raw = request.form.get('stock_cajas')
         stock_cajas = int(stk_raw) if stk_raw and stk_raw.strip() != "" else 0
 
@@ -434,32 +433,47 @@ def compras():
         monto_transferencia = 0.0
         caja_obj = obtener_o_crear_caja()
 
+        nueva_compra = Compra(
+            proveedor=proveedor,
+            medio_pago=medio_pago,
+            costo_total=costo_total,
+            monto_efectivo=0.0,
+            monto_transferencia=0.0
+        )
+        db.session.add(nueva_compra)
+        db.session.flush()
+
         if medio_pago == 'Transferencia':
             monto_transferencia = costo_total
             caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) - costo_total
+            registrar_movimiento_caja('Egreso', 'Transferencia', costo_total, f'Compra #{nueva_compra.id}')
         elif medio_pago == 'Efectivo':
             monto_efectivo = costo_total
             caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) - costo_total
+            registrar_movimiento_caja('Egreso', 'Efectivo', costo_total, f'Compra #{nueva_compra.id}')
         elif medio_pago == 'Mixto':
             monto_efectivo = float(request.form.get('monto_efectivo') or 0.0)
             monto_transferencia = float(request.form.get('monto_transferencia') or 0.0)
 
             if abs((monto_efectivo + monto_transferencia) - costo_total) > 0.01:
+                db.session.rollback()
                 flash("Error: La suma de efectivo y transferencia no coincide con el costo total de la compra.", "danger")
                 return redirect(url_for('compras'))
 
             caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) - monto_efectivo
             caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) - monto_transferencia
 
-        nueva_compra = Compra(
-            proveedor=proveedor,
-            medio_pago=medio_pago,
-            costo_total=costo_total,
-            monto_efectivo=monto_efectivo,
-            monto_transferencia=monto_transferencia
-        )
-        db.session.add(nueva_compra)
-        db.session.flush()
+            if monto_efectivo > 0:
+                registrar_movimiento_caja('Egreso', 'Efectivo', monto_efectivo, f'Compra #{nueva_compra.id}')
+            if monto_transferencia > 0:
+                registrar_movimiento_caja('Egreso', 'Transferencia', monto_transferencia, f'Compra #{nueva_compra.id}')
+        else:
+            # Para 'Debiendo' y 'Pendiente' NO se descuenta dinero de caja
+            monto_efectivo = 0.0
+            monto_transferencia = 0.0
+
+        nueva_compra.monto_efectivo = monto_efectivo
+        nueva_compra.monto_transferencia = monto_transferencia
 
         for item in items_compra:
             p_id = int(item.get('producto_id'))
@@ -480,14 +494,7 @@ def compras():
                 )
                 db.session.add(detalle)
 
-        # Registrar el movimiento de egreso en el historial
-        if monto_efectivo > 0:
-            registrar_movimiento_caja('Egreso', 'Efectivo', monto_efectivo, f'Compra #{nueva_compra.id}')
-        if monto_transferencia > 0:
-            registrar_movimiento_caja('Egreso', 'Transferencia', monto_transferencia, f'Compra #{nueva_compra.id}')
-
         db.session.commit()
-
         flash("Compra registrada correctamente.", "success")
         return redirect(url_for('compras'))
 
@@ -517,18 +524,20 @@ def eliminar_compra(compra_id):
         tr = float(compra.monto_transferencia or 0.0)
         caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + ef
         caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + tr
-        registrar_movimiento_caja('Ingreso', 'Efectivo', ef, f'Anulación Compra #{compra.id}')
-        registrar_movimiento_caja('Ingreso', 'Transferencia', tr, f'Anulación Compra #{compra.id}')
+        if ef > 0:
+            registrar_movimiento_caja('Ingreso', 'Efectivo', ef, f'Anulación Compra #{compra.id}')
+        if tr > 0:
+            registrar_movimiento_caja('Ingreso', 'Transferencia', tr, f'Anulación Compra #{compra.id}')
     elif compra.medio_pago == 'Transferencia':
         caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + costo_tot
         registrar_movimiento_caja('Ingreso', 'Transferencia', costo_tot, f'Anulación Compra #{compra.id}')
-    else:
+    elif compra.medio_pago == 'Efectivo':
         caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + costo_tot
         registrar_movimiento_caja('Ingreso', 'Efectivo', costo_tot, f'Anulación Compra #{compra.id}')
 
     db.session.delete(compra)
     db.session.commit()
-    flash("Compra eliminada, stock descontado y dinero devuelto a caja.", "info")
+    flash("Compra eliminada y stock descontado correctamente.", "info")
     return redirect(url_for('compras'))
 
 
@@ -955,42 +964,6 @@ def historial():
     movimientos.sort(key=lambda x: x['fecha'], reverse=True)
 
     return render_template('historial.html', movimientos=movimientos)
-
-
-# ---------------------------------------------------------
-# ADMINISTRACIÓN Y RESETEO PROTEGIDO
-# ---------------------------------------------------------
-
-@app.route('/reset-db-secret-123456')
-@login_required
-def reset_db_manual():
-    if os.getenv("ENABLE_DB_RESET", "false").lower() != "true":
-        return "El reseteo de base de datos está desactivado en este entorno.", 403
-
-    if current_user.username != 'admin':
-        return "Acceso no autorizado", 403
-        
-    try:
-        db.drop_all()
-        db.create_all()
-
-        usuarios = [
-            ("admin", "admin"),
-            ("Emilia", "Barritas123"),
-            ("Analia", "Barritas123"),
-            ("Cati", "Barritas123")
-        ]
-
-        for username, password in usuarios:
-            u = User(username=username)
-            u.set_password(password)
-            db.session.add(u)
-
-        db.session.commit()
-        return "¡Base de datos reseteada y usuarios creados correctamente!"
-    except Exception as e:
-        db.session.rollback()
-        return f"Error al resetear: {str(e)}", 500
 
 
 # ---------------------------------------------------------
