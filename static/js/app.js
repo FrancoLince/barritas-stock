@@ -42,11 +42,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const medioPagoCompraSelect = document.getElementById('medio_pago');
     const tablaCarritoCompra = document.getElementById('tabla-carrito');
 
+    // Filtros de Productos en Compras
+    const filtroMarcaSelect = document.getElementById('filtro_marca_select');
+    const filtroProductoInput = document.getElementById('filtro_producto_input');
+
     // UI & Tablas Generales
     const filtroEstadoTabla = document.getElementById('filtroEstadoTabla');
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+
+    // Referencias a filtros de la tabla de Productos
+    const filtroTablaMarca = document.getElementById('filtro_tabla_marca');
+    const filtroTablaBusqueda = document.getElementById('filtro_tabla_busqueda');
+
+    if (filtroTablaMarca) {
+        filtroTablaMarca.addEventListener('change', filtrarTablaProductos);
+    }
+    if (filtroTablaBusqueda) {
+        filtroTablaBusqueda.addEventListener('input', filtrarTablaProductos);
+    }
 
     // ----------------------------------------------------
     // 2. LÓGICA DE PRECIOS Y STOCK DESDE API (VENTAS)
@@ -141,6 +156,14 @@ document.addEventListener('DOMContentLoaded', () => {
         formCompra.addEventListener('submit', validarFormularioCompra);
     }
 
+    // Event listeners para filtros dobles de productos en Compras
+    if (filtroMarcaSelect) {
+        filtroMarcaSelect.addEventListener('change', filtrarProductosCompras);
+    }
+    if (filtroProductoInput) {
+        filtroProductoInput.addEventListener('input', filtrarProductosCompras);
+    }
+
     // Filtros & Historiales
     if (filtroEstadoTabla) {
         filtroEstadoTabla.addEventListener('change', calcularTotalesYFiltrar);
@@ -203,9 +226,37 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ----------------------------------------------------
-// 5. FUNCIONES DE VENTAS
+// 5. FUNCIONES DE FILTRADO
 // ----------------------------------------------------
+function filtrarProductosCompras() {
+    const marcaSeleccionada = document.getElementById('filtro_marca_select')?.value.toLowerCase() || '';
+    const textoBuscado = document.getElementById('filtro_producto_input')?.value.toLowerCase() || '';
+    const select = document.getElementById('select_producto');
 
+    if (!select) return;
+
+    const opciones = select.options;
+
+    for (let i = 1; i < opciones.length; i++) {
+        const optMarca = (opciones[i].getAttribute('data-marca') || '').toLowerCase();
+        const optTexto = opciones[i].text.toLowerCase();
+
+        const coincideMarca = !marcaSeleccionada || optMarca === marcaSeleccionada;
+        const coincideTexto = !textoBuscado || optTexto.includes(textoBuscado);
+
+        if (coincideMarca && coincideTexto) {
+            opciones[i].style.display = "";
+        } else {
+            opciones[i].style.display = "none";
+        }
+    }
+
+    select.value = ""; // Resetea la selección activa al filtrar
+}
+
+// ----------------------------------------------------
+// 6. FUNCIONES DE VENTAS
+// ----------------------------------------------------
 function togglePagoMixto() {
     const obsSelect = document.getElementById('observaciones')?.value;
     const bloqueMixto = document.getElementById('bloquePagoMixto');
@@ -318,9 +369,8 @@ function validarFormularioVenta(e) {
 }
 
 // ----------------------------------------------------
-// 6. FUNCIONES DE COMPRAS
+// 7. FUNCIONES DE COMPRAS
 // ----------------------------------------------------
-
 function togglePagoMixtoCompra() {
     const medioPago = document.getElementById('medio_pago')?.value;
     const divMixto = document.getElementById('div_pago_mixto_compra');
@@ -329,12 +379,10 @@ function togglePagoMixtoCompra() {
 
     if (divMixto && inputEf && inputTr) {
         if (medioPago === 'Mixto') {
-            divMixto.style.display = 'block';
-            divMixto.classList.remove('d-none', 'hidden');
+            divMixto.classList.remove('d-none');
             inputEf.required = true;
             inputTr.required = true;
         } else {
-            divMixto.style.display = 'none';
             divMixto.classList.add('d-none');
             inputEf.required = false;
             inputTr.required = false;
@@ -458,9 +506,8 @@ function validarFormularioCompra(e) {
 }
 
 // ----------------------------------------------------
-// 7. OTROS FILTROS DE TABLAS
+// 8. OTROS FILTROS DE TABLAS
 // ----------------------------------------------------
-
 function calcularTotalesYFiltrar() {
     const filtroElem = document.getElementById('filtroEstadoTabla');
     if (!filtroElem) return;
@@ -499,4 +546,26 @@ function calcularTotalesYFiltrar() {
     if (elemTr) elemTr.textContent = `$${totalTransferencia.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     if (elemDeb) elemDeb.textContent = `$${totalDebiendo.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     if (elemProc) elemProc.textContent = `$${totalEnProceso.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+}
+// ----------------------------------------------------
+// FILTRADO DE LA TABLA DE PRODUCTOS
+// ----------------------------------------------------
+function filtrarTablaProductos() {
+    const marcaSeleccionada = document.getElementById('filtro_tabla_marca')?.value.toLowerCase() || '';
+    const textoBuscado = document.getElementById('filtro_tabla_busqueda')?.value.toLowerCase() || '';
+    const filas = document.querySelectorAll('#tabla-productos tbody tr');
+
+    filas.forEach(fila => {
+        const marcaFila = (fila.getAttribute('data-marca') || '').toLowerCase();
+        const textoFila = (fila.getAttribute('data-texto') || '').toLowerCase();
+
+        const coincideMarca = !marcaSeleccionada || marcaFila === marcaSeleccionada;
+        const coincideTexto = !textoBuscado || textoFila.includes(textoBuscado);
+
+        if (coincideMarca && coincideTexto) {
+            fila.style.display = "";
+        } else {
+            fila.style.display = "none";
+        }
+    });
 }
