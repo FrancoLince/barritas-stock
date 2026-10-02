@@ -388,7 +388,7 @@ def stock():
 
 
 # ---------------------------------------------------------
-# INGRESO DE COMPRAS
+# INGRESO Y EDICIÓN DE COMPRAS
 # ---------------------------------------------------------
 
 @app.route('/compras', methods=['GET', 'POST'])
@@ -504,6 +504,92 @@ def compras():
 
     prods = Producto.query.all()
     return render_template('compras.html', compras=lista_compras, productos=prods)
+
+
+@app.route('/compras/<int:compra_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_compra(compra_id):
+    compra = db.session.get(Compra, compra_id) or db.first_or_404(Compra, compra_id)
+
+    if request.method == 'POST':
+        try:
+            caja_obj = obtener_o_crear_caja()
+
+            # Revertir el saldo previo en caja si provenía de un pago inmediato
+            if compra.medio_pago == 'Mixto':
+                ef_prev = float(compra.monto_efectivo or 0)
+                tr_prev = float(compra.monto_transferencia or 0)
+                caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + ef_prev
+                caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + tr_prev
+            elif compra.medio_pago == 'Transferencia':
+                caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + float(compra.costo_total or 0)
+            elif compra.medio_pago == 'Efectivo':
+                caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) + float(compra.costo_total or 0)
+
+            compra.proveedor = request.form.get('proveedor', '')
+            nuevo_medio = request.form.get('medio_pago')
+            compra.medio_pago = nuevo_medio
+
+            nuevo_costo_total = 0.0
+
+            # Ajustar cantidades, costos y stock por cada ítem
+            for d in compra.detalles:
+                nueva_cant = int(request.form.get(f'cantidad_{d.id}', d.cantidad_cajas) or d.cantidad_cajas)
+                nuevo_costo = float(request.form.get(f'costo_{d.id}', d.costo_por_caja) or d.costo_por_caja)
+
+                producto = db.session.get(Producto, d.producto_id)
+                if producto:
+                    dif_stock = nueva_cant - d.cantidad_cajas
+                    producto.stock_cajas += dif_stock
+                    producto.costo_caja = nuevo_costo
+
+                d.cantidad_cajas = nueva_cant
+                d.costo_por_caja = nuevo_costo
+                d.subtotal = nueva_cant * nuevo_costo
+                nuevo_costo_total += d.subtotal
+
+            compra.costo_total = nuevo_costo_total
+
+            # Aplicar el nuevo pago a la caja
+            if nuevo_medio == 'Mixto':
+                m_ef = float(request.form.get('monto_efectivo') or 0)
+                m_tr = float(request.form.get('monto_transferencia') or 0)
+                
+                if abs((m_ef + m_tr) - nuevo_costo_total) > 0.01:
+                    db.session.rollback()
+                    flash("Error: La suma de efectivo y transferencia no coincide con el costo total de la compra.", "danger")
+                    return redirect(url_for('editar_compra', compra_id=compra.id))
+
+                compra.monto_efectivo = m_ef
+                compra.monto_transferencia = m_tr
+                caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) - m_ef
+                caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) - m_tr
+
+            elif nuevo_medio == 'Efectivo':
+                compra.monto_efectivo = nuevo_costo_total
+                compra.monto_transferencia = 0.0
+                caja_obj.saldo_efectivo = float(caja_obj.saldo_efectivo or 0) - nuevo_costo_total
+
+            elif nuevo_medio == 'Transferencia':
+                compra.monto_efectivo = 0.0
+                compra.monto_transferencia = nuevo_costo_total
+                caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) - nuevo_costo_total
+
+            else:
+                # 'Debiendo' o 'Pendiente'
+                compra.monto_efectivo = 0.0
+                compra.monto_transferencia = 0.0
+
+            db.session.commit()
+            flash("Compra modificada correctamente.", "success")
+            return redirect(url_for('compras'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error al editar la compra: {str(e)}", "danger")
+            return redirect(url_for('editar_compra', compra_id=compra.id))
+
+    return render_template('editar_compra.html', compra=compra)
 
 
 @app.route('/compras/<int:compra_id>/eliminar', methods=['POST'])
