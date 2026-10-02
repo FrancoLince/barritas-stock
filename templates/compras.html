@@ -13,15 +13,40 @@
     <form action="{{ url_for('compras') }}" method="POST" id="form-compra">
         <input type="hidden" name="carrito_data" id="carrito_data">
 
+        <!-- Controles de Filtros Dinámicos -->
+        <div class="form-grid mb-3">
+            <div class="form-group">
+                <label for="filtro_marca_select" class="form-label fw-bold">🏷️️ Filtrar por Marca:</label>
+                <select id="filtro_marca_select" class="form-control">
+                    <option value="">Todas las marcas</option>
+                    {% set marcas_unicas = [] %}
+                    {% for prod in productos %}
+                        {% if prod.marca not in marcas_unicas %}
+                            {% set _ = marcas_unicas.append(prod.marca) %}
+                            <option value="{{ prod.marca }}">{{ prod.marca }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="filtro_producto_input" class="form-label fw-bold">🔍 Buscar por Nombre / Sabor:</label>
+                <input type="text" id="filtro_producto_input" class="form-control" placeholder="Ej: Whey, Frutilla, BCAA...">
+            </div>
+        </div>
+
         <!-- Selector de Productos para agregar al Detalle -->
         <div class="form-grid mb-3">
             <div class="form-group">
                 <label for="select_producto">Producto:</label>
-                <select id="select_producto" class="form-control">
+                <select id="select_producto" class="form-control" required>
                     <option value="">Seleccione producto...</option>
                     {% for prod in productos %}
-                        <option value="{{ prod.id }}" data-nombre="{{ prod.nombre }} - {{ prod.sabor }}" data-costo="{{ prod.costo_caja }}">
-                            {{ prod.nombre }} - {{ prod.sabor }} (Stock actual: {{ prod.stock_cajas }} cajas)
+                        <option value="{{ prod.id }}" 
+                                data-nombre="{{ prod.nombre }} - {{ prod.sabor }}" 
+                                data-marca="{{ prod.marca }}" 
+                                data-costo="{{ prod.costo_caja }}">
+                            [{{ prod.marca }}] {{ prod.nombre }} - {{ prod.sabor }} (Stock actual: {{ prod.stock_cajas }} cajas)
                         </option>
                     {% endfor %}
                 </select>
@@ -73,7 +98,7 @@
             </div>
             <div class="form-group">
                 <label for="medio_pago">Medio de Pago:</label>
-                <select id="medio_pago" name="medio_pago" class="form-control" onchange="togglePagoMixtoCompra()" required>
+                <select id="medio_pago" name="medio_pago" class="form-control" required>
                     <option value="">Seleccione medio de pago...</option>
                     <option value="Efectivo">Efectivo</option>
                     <option value="Transferencia">Transferencia</option>
@@ -85,7 +110,7 @@
         </div>
 
         <!-- Campos para Pago Mixto -->
-        <div id="div_pago_mixto_compra" class="pago-mixto-container mt-3" style="display: none;">
+        <div id="div_pago_mixto_compra" class="pago-mixto-container mt-3 d-none">
             <div class="form-grid">
                 <div class="form-group">
                     <label for="monto_efectivo_compra">Monto en Efectivo ($):</label>
@@ -155,9 +180,12 @@
                         {% endif %}
                     </td>
                     <td class="text-end">
-                        <form action="{{ url_for('eliminar_compra', compra_id=c.id) }}" method="POST" class="d-inline" data-confirm="¿Anular esta compra? Se descontará el stock de cada producto agregado.">
-                            <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ Anular</button>
-                        </form>
+                        <div class="d-inline-flex gap-1">
+                            <a href="{{ url_for('editar_compra', compra_id=c.id) }}" class="btn btn-sm btn-outline-warning">✏️ Editar</a>
+                            <form action="{{ url_for('eliminar_compra', compra_id=c.id) }}" method="POST" class="d-inline" data-confirm="¿Anular esta compra? Se descontará el stock de cada producto agregado.">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ Anular</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% else %}
