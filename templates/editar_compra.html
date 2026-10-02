@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Compra #{{ compra.id }} | Barritas ERP{% endblock %}
+{% block page_title %}Editar Compra #{{ compra.id }}{% endblock %}
+
+{% block content %}
+<div class="erp-card mb-4">
+    <div class="card-header-custom">
+        <h3>Modificar Datos de la Compra #{{ compra.id }}</h3>
+    </div>
+
+    <form action="{{ url_for('editar_compra', compra_id=compra.id) }}" method="POST" id="form-editar-compra">
+        <div class="form-grid mb-3">
+            <div class="form-group">
+                <label for="proveedor">Proveedor:</label>
+                <input type="text" id="proveedor" name="proveedor" class="form-control" value="{{ compra.proveedor or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="medio_pago">Medio de Pago:</label>
+                <select id="medio_pago" name="medio_pago" class="form-control" required>
+                    <option value="Efectivo" {% if compra.medio_pago == 'Efectivo' %}selected{% endif %}>Efectivo</option>
+                    <option value="Transferencia" {% if compra.medio_pago == 'Transferencia' %}selected{% endif %}>Transferencia</option>
+                    <option value="Mixto" {% if compra.medio_pago == 'Mixto' %}selected{% endif %}>Mixto</option>
+                    <option value="Debiendo" {% if compra.medio_pago == 'Debiendo' %}selected{% endif %}>Debiendo (A crédito)</option>
+                    <option value="Pendiente" {% if compra.medio_pago == 'Pendiente' %}selected{% endif %}>Pendiente de pago</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Pago Mixto -->
+        <div id="div_pago_mixto_compra" class="pago-mixto-container mb-4 {% if compra.medio_pago != 'Mixto' %}d-none{% endif %}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="monto_efectivo_compra">Monto en Efectivo ($):</label>
+                    <input type="number" step="0.01" min="0" id="monto_efectivo_compra" name="monto_efectivo" class="form-control" value="{{ compra.monto_efectivo or 0 }}">
+                </div>
+                <div class="form-group">
+                    <label for="monto_transferencia_compra">Monto en Transferencia ($):</label>
+                    <input type="number" step="0.01" min="0" id="monto_transferencia_compra" name="monto_transferencia" class="form-control" value="{{ compra.monto_transferencia or 0 }}">
+                </div>
+            </div>
+        </div>
+
+        <h4 class="mb-3 mt-4">Detalle de Cantidades y Costos</h4>
+        <div class="table-responsive mb-3">
+            <table class="table table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Producto</th>
+                        <th style="width: 150px;">Cantidad Cajas</th>
+                        <th style="width: 180px;">Costo por Caja ($)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in compra.detalles %}
+                    <tr>
+                        <td>
+                            <strong>{{ d.producto.nombre if d.producto else 'Producto Eliminado' }}</strong> 
+                            ({{ d.producto.sabor if d.producto else '-' }})
+                        </td>
+                        <td>
+                            <input type="number" min="1" name="cantidad_{{ d.id }}" class="form-control" value="{{ d.cantidad_cajas }}" required>
+                        </td>
+                        <td>
+                            <input type="number" step="0.01" min="0" name="costo_{{ d.id }}" class="form-control" value="{{ d.costo_por_caja }}" required>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            <a href="{{ url_for('compras') }}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
