@@ -214,6 +214,7 @@ def movimiento_caja():
     tipo_movimiento = request.form.get('tipo_movimiento')
     medio = request.form.get('medio')
     monto = float(request.form.get('monto', 0.0) or 0.0)
+    concepto_input = request.form.get('concepto', '').strip()
 
     if monto <= 0:
         flash("El monto debe ser mayor a 0.", "warning")
@@ -228,7 +229,8 @@ def movimiento_caja():
         elif medio == 'transferencia':
             caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) + monto
         
-        registrar_movimiento_caja('Ingreso', medio_str, monto, 'Movimiento Rápido (+)')
+        concepto = concepto_input if concepto_input else 'Ingreso de Caja'
+        registrar_movimiento_caja('Ingreso', medio_str, monto, concepto)
         flash(f"Se sumaron ${monto:,.2f} al saldo de {medio_str}.", "success")
 
     elif tipo_movimiento == 'restar':
@@ -237,7 +239,8 @@ def movimiento_caja():
         elif medio == 'transferencia':
             caja_obj.saldo_transferencia = float(caja_obj.saldo_transferencia or 0) - monto
         
-        registrar_movimiento_caja('Egreso', medio_str, monto, 'Movimiento Rápido (-)')
+        concepto = concepto_input if concepto_input else 'Egreso de Caja'
+        registrar_movimiento_caja('Egreso', medio_str, monto, concepto)
         flash(f"Se restaron ${monto:,.2f} del saldo de {medio_str}.", "warning")
 
     db.session.commit()
