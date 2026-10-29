@@ -146,6 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Compras
     if (medioPagoCompraSelect) {
         medioPagoCompraSelect.addEventListener('change', togglePagoMixtoCompra);
+        togglePagoMixtoCompra(); // Evalúa visibilidad al cargar
     }
 
     if (btnAgregarCompra) {
@@ -226,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ----------------------------------------------------
-// 5. FUNCIONES DE FILTRADO
+// 5. FUNCIONES DE FILTRADO DE COMPRAS
 // ----------------------------------------------------
 function filtrarProductosCompras() {
     const marcaSeleccionada = document.getElementById('filtro_marca_select')?.value.toLowerCase() || '';
@@ -251,7 +252,7 @@ function filtrarProductosCompras() {
         }
     }
 
-    select.value = ""; // Resetea la selección activa al filtrar
+    select.value = "";
 }
 
 // ----------------------------------------------------
@@ -377,17 +378,23 @@ function togglePagoMixtoCompra() {
     const inputEf = document.getElementById('monto_efectivo_compra') || document.getElementById('monto_efectivo');
     const inputTr = document.getElementById('monto_transferencia_compra') || document.getElementById('monto_transferencia');
 
-    if (divMixto && inputEf && inputTr) {
+    if (divMixto) {
         if (medioPago === 'Mixto') {
             divMixto.classList.remove('d-none');
-            inputEf.required = true;
-            inputTr.required = true;
+            divMixto.style.display = 'block';
+            if (inputEf) inputEf.required = true;
+            if (inputTr) inputTr.required = true;
         } else {
             divMixto.classList.add('d-none');
-            inputEf.required = false;
-            inputTr.required = false;
-            inputEf.value = '0';
-            inputTr.value = '0';
+            divMixto.style.display = 'none';
+            if (inputEf) {
+                inputEf.required = false;
+                inputEf.value = '0';
+            }
+            if (inputTr) {
+                inputTr.required = false;
+                inputTr.value = '0';
+            }
         }
     }
 }
@@ -547,6 +554,7 @@ function calcularTotalesYFiltrar() {
     if (elemDeb) elemDeb.textContent = `$${totalDebiendo.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     if (elemProc) elemProc.textContent = `$${totalEnProceso.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 }
+
 // ----------------------------------------------------
 // FILTRADO DE LA TABLA DE PRODUCTOS
 // ----------------------------------------------------
