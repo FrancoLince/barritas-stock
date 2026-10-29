@@ -29,14 +29,14 @@
     </div>
 </div>
 
-<!-- SECCIÓN 1: MOVIMIENTOS RÁPIDOS (SUMAR / RESTAR) -->
+<!-- SECCIÓN 1: MOVIMIENTOS RÁPIDOS (SUMAR / RESTAR) CON CONCEPTO -->
 <div class="erp-card mb-4">
     <h5 class="mb-1 fw-bold">Ingreso / Egreso Rápido de Dinero</h5>
-    <p class="text-muted small mb-3">Usá esta sección para sumar o restar importes específicos (gastos varios, retiros o ingresos extra).</p>
+    <p class="text-muted small mb-3">Usá esta sección para sumar o restar importes específicos e indicar la descripción del gasto o ingreso.</p>
     
     <form action="{{ url_for('movimiento_caja') }}" method="POST">
         <div class="row g-3 align-items-end">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label for="tipo_movimiento" class="form-label fw-bold">Acción</label>
                 <select name="tipo_movimiento" id="tipo_movimiento" class="form-select" required>
                     <option value="sumar">Sumar (+)</option>
@@ -44,7 +44,7 @@
                 </select>
             </div>
 
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label for="medio" class="form-label fw-bold">Medio de Pago</label>
                 <select name="medio" id="medio" class="form-select" required>
                     <option value="efectivo">Efectivo</option>
@@ -52,9 +52,14 @@
                 </select>
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-2">
                 <label for="monto" class="form-label fw-bold">Monto ($)</label>
                 <input type="number" step="0.01" min="0.01" id="monto" name="monto" class="form-control" placeholder="0.00" required>
+            </div>
+
+            <div class="col-md-4">
+                <label for="concepto" class="form-label fw-bold">Concepto / Descripción</label>
+                <input type="text" id="concepto" name="concepto" class="form-control" placeholder="Ej: Pago de luz, bolsas, flete..." required>
             </div>
 
             <div class="col-md-2">
